@@ -579,7 +579,7 @@
 
 				this.innerHTML = `Ophalen van informatie...`
 
-				const response = await fetch(src, {cache: `no-cache`});
+				const response = await fetch(src, {});
 
 				if (this.pending !== current) {
 					return;
