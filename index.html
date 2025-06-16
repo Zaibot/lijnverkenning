@@ -299,7 +299,7 @@
 			min-width: 5rem;
 			background-color: #f0f0ff;
 			gap: 0.5rem;
-			padding: 2rem 0.5rem;
+			padding: 0.5rem;
 			box-sizing: border-box;
 
 			&>header {
@@ -356,44 +356,11 @@
 		}
 
 
-
-		app-routes,
-		app-trips {
+		app-doc {
 			display: flex;
 			flex-direction: column;
 			gap: 0.5rem;
 			padding: 0.5rem;
-			overflow-y: auto;
-			max-height: 40vh;
-
-			app-choice {
-				border-bottom: 1px solid #40404040;
-				padding: 0.2rem;
-				display: flex;
-
-				header {
-					font-size: 1.2rem;
-					display: flex;
-					gap: 1rem;
-					overflow: hidden;
-					align-items: center;
-				}
-
-				app-list {
-					display: flex;
-					flex-direction: column;
-					gap: 0.2rem;
-				}
-
-				app-name {
-					text-overflow: ellipsis;
-					white-space: nowrap;
-				}
-
-				app-line {
-					flex: 0 0 auto;
-				}
-			}
 		}
 
 		.app-search-hidden {
@@ -415,11 +382,15 @@
 		app-search {
 			display: flex;
 
-		}
 
-		input[type="search"] {
-			flex: 1 1 auto;
-			padding: 0.2rem;
+			input {
+				font: inherit;
+				border: 0px solid transparent;
+				background-color: #c0c0f0;
+				border-radius: 0.5rem;
+				padding: 0.25rem;
+				flex: 1 1 auto;
+			}
 		}
 
 	</style>
@@ -432,6 +403,9 @@
 
 	<app-main>
 		<app-side>
+			<app-search data-target="app-doc > app-trip-ref">
+				<input type="text" autocomplete="false" />
+			</app-search>
 			<app-doc data-src="static/trip-ref.html"></app-doc>
 		</app-side>
 		<app-map>
@@ -521,65 +495,6 @@
 		}
 		window.customElements.define(`app-fav`, AppFav);
 
-
-		class AppNotes extends HTMLElement {
-			static observedAttributes = ['data-key'];
-
-			get app_text() {
-				const key = this.dataset.key;
-				if (!key) {
-					return false;
-				}
-
-				const value = window.localStorage.getItem(`note-text-${key}`);
-				console.log(`< text`, {value}); return value ?? ``;
-			} set app_text(value) {
-				const
-					key = this.dataset.key; if (!key) {return;} window.localStorage.setItem(`note-text-${key}`,
-						value); console.log(`> text`, {value});
-			}
-
-			get app_header() {
-				return this.querySelector(`header`);
-			}
-
-			get app_textarea() {
-				return this.querySelector(`textarea`);
-			}
-
-			constructor() {
-				super();
-				this.on_change = this.on_change.bind(this);
-				this.innerHTML = `<header></header><textarea></textarea>`
-			}
-
-			connectedCallback() {
-				this.app_textarea.addEventListener(`change`, this.on_change);
-				this.redraw();
-			}
-
-			disconnectedCallback() {
-				this.app_textarea.removeEventListener(`change`, this.on_change);
-			}
-
-			redraw() {
-				this.app_textarea.value = this.app_text;
-			}
-
-			attributeChangedCallback(name, oldValue, newValue) {
-				this.redraw();
-			}
-
-			on_change(e) {
-				e.preventDefault();
-				e.stopImmediatePropagation();
-
-				this.app_text = this.app_textarea.value;
-			}
-		}
-		window.customElements.define(`app-notes`, AppNotes);
-
-
 		class AppSearch extends HTMLElement {
 			static observedAttributes = [`data-target`];
 
@@ -601,14 +516,21 @@
 			}
 
 			on_change(e) {
-				const search = e.target.value;
+
+				this.apply_search();
+			}
+
+			apply_search() {
+				const value = this.querySelector(`input`).value;
+				const search = value.split(/\s+/).map(x => x.toLowerCase());
 				const target = document.querySelectorAll(this.dataset.target);
 
 				for (const el of target) {
-					const sources = el.querySelectorAll(`app-name,app-line,app-city,app-stop`);
+					const sources = el.querySelectorAll(`app-name,app-line,app-city,app-stop,app-stop-ref`);
 					let match = false;
 					for (const s of sources) {
-						match |= s.textContent.includes(search);
+						const src = s.textContent.toLowerCase();
+						match |= search.every(si => src.includes(si));
 						if (match) {
 							break;
 						}
@@ -671,6 +593,10 @@
 				const text = await response.text();
 
 				this.innerHTML = text;
+
+				for (const s of document.querySelectorAll(`app-search`)) {
+					s.apply_search?.();
+				}
 			}
 		}
 		window.customElements.define(`app-doc`, AppDoc);
@@ -837,6 +763,13 @@
 				this.parentElement?.parentElement?.app_fit?.();
 			}
 
+			app_notes_append(lines) {
+				const text = localStorage.getItem(this.app_storagekey);
+				if (text) {
+					lines.push(text);
+				}
+			}
+
 			on_click(e) {
 				this.app_open();
 			}
@@ -937,6 +870,33 @@
 				}
 
 				this.polyline?.forEach(x => x.addTo(map));
+
+
+				this._export = h(`button`, `TXT`);
+				this._export.addEventListener(`click`, () => {
+					const line = this.querySelector(`app-line`).textContent;
+					const name = this.querySelector(`app-name`).textContent;
+					const lines = [
+						`Lijn ${line} - ${name}`,
+					];
+					for (const el of this.querySelectorAll(`app-city,app-stop:has(app-fav.selected),app-stop-travel`)) {
+						el.app_notes_append?.(lines);
+					}
+					const text = lines.join(`\n`);
+
+					const ta = h(`textarea`, text);
+					ta.rows = 10;
+					ta.cols = 40;
+					const form = h(`form`, [ta]);
+					form.method = `dialog`;
+
+					const dialog = h(`dialog`, [form]);
+					document.documentElement.appendChild(dialog);
+					dialog.showModal();
+
+					navigator.clipboard.writeText(text);
+				});
+				this.querySelector(`header`).appendChild(this._export);
 			}
 
 			app_fit() {
@@ -1075,6 +1035,13 @@
 				}
 			}
 
+			app_notes_append(lines) {
+
+				lines.push(`${this.querySelector(`app-name`).textContent}`);
+
+			}
+
+
 			on_hover() {
 				this.marker.setRadius(12);
 				this.classList.add(`focus`);
@@ -1094,61 +1061,6 @@
 			}
 		}
 		window.customElements.define(`app-stop`, AppStop);
-
-		class LineHandler {
-			constructor(handler) {
-				this.pending = [];
-				this.handler = handler;
-				this.finished = false;
-			}
-
-			async on_data_received(chunk) {
-				this.pending.push(chunk);
-				await this.handler?.on_data_received?.(chunk);
-				await this.handle_pending();
-			}
-
-			async on_data_complete() {
-				this.finished = true;
-				await this.handle_pending();
-				await this.handler?.on_data_complete?.();
-			}
-
-			async on_line_received(line) {
-				await this.handler?.on_line_received?.(line);
-			}
-
-			async handle_pending() {
-				if (this.pending.length === 0) {
-					return;
-				}
-
-				const newline = this.pending[0].indexOf(`\n`);
-				if (newline > -1) {
-					const chunk = this.pending.shift();
-					const ready = chunk.substring(0, newline);
-					const remainder = chunk.substring(newline + 1);
-					this.pending.unshift(remainder);
-
-					await this.on_line_received(ready);
-
-					if (this.pending[0]?.length === 0 && this.finished) {
-						this.on_data_complete();
-					}
-					this.handle_pending();
-				} else {
-					this.pending = [this.pending.join(``)];
-
-					const has_newline = this.pending[0].indexOf(`\n`) > -1;
-					if (has_newline) {
-						if (this.pending[0]?.length === 0 && this.finished) {
-							this.on_data_complete();
-						}
-						this.handle_pending();
-					}
-				}
-			}
-		}
 
 		function delay(ms) {
 			return new Promise((resolve) => {
