@@ -4,7 +4,7 @@
 <head>
 	<base target="_top">
 	<meta charset="utf-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1, max-scale=1">
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 
 	<title>Lijnverkenning</title>
 
@@ -45,7 +45,7 @@
 			@media (orientation: portrait) {
 				grid-template:
 					"map" 1fr
-					"side" 2fr / auto;
+					"side" 2fr / 1fr;
 			}
 		}
 
@@ -63,7 +63,7 @@
 
 		app-routes,
 		app-trips,
-		app-test {
+		app-doc {
 			flex: 1 1 auto;
 			overflow-y: auto;
 		}
@@ -81,6 +81,7 @@
 
 			app-stop {
 				padding-left: 1rem;
+				user-select: none;
 			}
 
 		}
@@ -151,7 +152,7 @@
 			padding: 0.2rem;
 			color: #40408080;
 
-			app-test & {}
+			app-doc & {}
 		}
 
 		app-trip-ref {
@@ -240,14 +241,20 @@
 			flex-direction: column;
 
 			&>header {
-				padding: 0.2rem;
-				margin-right: 2rem;
-				border-radius: 0.2rem;
+				padding: 0.5rem;
+				border-radius: 0.5rem;
 				color: #e0e0f0;
 				background-color: #202050;
 
-				&>app-line {
-					border-right: 2px solid #e0e0f080;
+
+				&>app-name {
+					background-color: #e0e0f0;
+					background-color: #c0c0f0;
+					color: #202050;
+					border-radius: 0.25rem;
+					padding: 0.5rem;
+					text-transform: uppercase;
+					font-weight: bold;
 				}
 			}
 		}
@@ -425,7 +432,7 @@
 
 	<app-main>
 		<app-side>
-			<app-test data-src="static/trip-ref.html"></app-test>
+			<app-doc data-src="static/trip-ref.html"></app-doc>
 		</app-side>
 		<app-map>
 		</app-map>
@@ -434,8 +441,13 @@
 
 	<script>
 		class AppMap extends HTMLElement {
-			connectedCallback() {
+			constructor() {
+				super();
+
 				this.osm = L.map(this);
+			}
+
+			connectedCallback() {
 				this.osm.setView([51.981776, 5.902942], 12);
 
 				this.tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -612,12 +624,11 @@
 
 
 
-		class AppTest extends HTMLElement {
+		class AppDoc extends HTMLElement {
 			static observedAttributes = [`data-src`];
 
 			constructor() {
 				super()
-
 				this.pending = 0;
 			}
 
@@ -631,7 +642,6 @@
 
 			attributeChangedCallback(name, oldValue, newValue) {
 				if (name === `data-src`) {
-
 					this.refresh();
 				}
 			}
@@ -663,7 +673,7 @@
 				this.innerHTML = text;
 			}
 		}
-		window.customElements.define(`app-test`, AppTest);
+		window.customElements.define(`app-doc`, AppDoc);
 
 		class AppTripRef extends HTMLElement {
 			constructor() {
@@ -690,8 +700,8 @@
 			}
 
 			on_click() {
-				const test = document.querySelector(`app-test`);
-				test.dataset.src = `static/trips/${this.dataset.shape}.html`;
+				const doc = document.querySelector(`app-doc`);
+				doc.dataset.src = `static/trips/${this.dataset.shape}.html`;
 			}
 
 			on_leave() {
@@ -769,6 +779,7 @@
 				this.on_click = this.on_click.bind(this);
 				this.on_change = this.on_change.bind(this);
 				this.on_leave = this.on_leave.bind(this);
+				this.on_closed = this.on_closed.bind(this);
 				this._button = h(`button`, `notitie aanmaken`);
 				const ta = h(`textarea`, ``);
 				ta.autofocus = true;
@@ -780,9 +791,12 @@
 					const text = this._form.querySelector(`textarea`).value;
 					const key = this.app_storagekey;
 					localStorage.setItem(key, text);
-					this.redraw();
+
+					this.on_closed();
 				});
 				this._dialog = h(`dialog`, [this._form]);
+				this._dialog.addEventListener(`cancel`, this.on_closed);
+				this._dialog.addEventListener(`close`, this.on_closed);
 
 				this.appendChild(this._button);
 			}
@@ -809,10 +823,22 @@
 				}
 			}
 
-			on_click(e) {
+			app_open() {
 				const textarea = this._form.querySelector(`textarea`);
 				textarea.value = localStorage.getItem(this.app_storagekey) ?? ``;
 				this._dialog.showModal();
+				this.app_fit();
+			}
+
+			on_closed() {
+				this.redraw();
+				this.prev_stop?.on_out?.();
+				this.next_stop?.on_out?.();
+				this.parentElement?.parentElement?.app_fit?.();
+			}
+
+			on_click(e) {
+				this.app_open();
 			}
 
 
@@ -831,6 +857,40 @@
 
 				localStorage.setItem(key, text);
 			}
+
+			get prev_stop() {
+				return this.prevElementSibling;
+			}
+
+			get next_stop() {
+				return this.nextElementSibling;
+			}
+
+			app_fit() {
+				const map = document.querySelector(`app-map`).osm;
+				const prev = this.previousElementSibling;
+				if (!prev) {return;}
+				const next = this.nextElementSibling;
+				if (!next) {return;}
+
+				const plat = prev.dataset.lat;
+				const plon = prev.dataset.lon;
+				const nlat = next.dataset.lat;
+				const nlon = next.dataset.lon;
+
+				if (plat && plon && nlat && nlon) {
+					prev.on_hover();
+					next.on_hover();
+					const bounds = L.polyline([
+						[parseFloat(plat), parseFloat(plon),],
+						[parseFloat(nlat), parseFloat(nlon),],
+					]).getBounds();
+					if (bounds.isValid()) {
+						map.fitBounds(bounds);
+					}
+
+				}
+			}
 		}
 		window.customElements.define(`app-stop-travel`, AppStopTravel);
 
@@ -847,8 +907,8 @@
 				const b = h(`button`, `<`);
 				b.type = `button`;
 				b.onclick = () => {
-					const test = document.querySelector(`app-test`);
-					test.dataset.src = `static/trip-ref.html`;
+					const doc = document.querySelector(`app-doc`);
+					doc.dataset.src = `static/trip-ref.html`;
 				};
 				this.insertBefore(b, this.firstChild);
 
@@ -877,6 +937,14 @@
 				}
 
 				this.polyline?.forEach(x => x.addTo(map));
+			}
+
+			app_fit() {
+				const map = document.querySelector(`app-map`).osm;
+				const bounds = this.polyline[0].getBounds();
+				if (bounds.isValid()) {
+					map.fitBounds(bounds);
+				}
 			}
 
 			disconnectedCallback() {
