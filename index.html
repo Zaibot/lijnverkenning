@@ -39,12 +39,13 @@
 		}
 
 		app-main {
-
 			grid-template: "map" "side" 1fr 2fr / auto;
 
-			grid-template:
-				"map" 1fr
-				"side" 1fr / 1fr;
+			@media (orientation: portrait) {
+				grid-template:
+					"map" 1fr
+					"side" 1fr / auto;
+			}
 		}
 
 		app-route {
