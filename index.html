@@ -207,6 +207,10 @@
 				color: #08084060;
 			}
 
+			&.user {
+				color: #080840c0;
+			}
+
 			span {
 				min-width: 0;
 				height: min-content;
@@ -421,21 +425,10 @@
 
 	<app-main>
 		<app-side>
-			<header>
-				<button type="button">Notities</button>
-			</header>
-
-			<app-search data-target="app-test > app-trip-ref">
-				<input />
-			</app-search>
 			<app-test data-src="static/trip-ref.html"></app-test>
-			<header>
-				<button type="button">Notities</button>
-			</header>
 		</app-side>
 		<app-map>
 		</app-map>
-
 	</app-main>
 
 
@@ -808,7 +801,9 @@
 			redraw() {
 				const key = this.app_storagekey;
 				if (key) {
-					this._button.textContent = localStorage.getItem(key)?.trim() || `notitie aanmaken`;
+					const text = localStorage.getItem(key)?.trim();
+					this.classList.toggle(`user`, !!text);
+					this._button.textContent = text || `notitie aanmaken`;
 				} else {
 					this._button.textContent = `notitie aanmaken`;
 				}
