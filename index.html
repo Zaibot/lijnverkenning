@@ -678,6 +678,13 @@
 		}
 		window.customElements.define(`app-trip-ref`, AppTripRef);
 
+		class AppCity extends HTMLElement {
+			app_notes_append(lines) {
+				lines.push(`[${this.textContent}]`);
+			}
+		}
+		window.customElements.define(`app-city`, AppCity);
+
 		class AppStopTravel extends HTMLElement {
 			static observedAttributes = [`data-start`, `data-end`];
 
