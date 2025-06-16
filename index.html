@@ -36,6 +36,7 @@
 		app-main {
 			display: grid;
 			grid-template: auto / 1fr 2fr;
+			max-height: 100vmax;
 		}
 
 		app-main {
@@ -776,38 +777,46 @@
 				this.on_change = this.on_change.bind(this);
 				this.on_leave = this.on_leave.bind(this);
 				this._button = h(`button`, `notitie aanmaken`);
-				this._text = h(`span`, ``);
-				this._form = h(`form`, [
-					h(`textarea`, ``),
+				const ta = h(`textarea`, ``);
+				ta.autofocus = true;
+				this._form = h(`form`, [ta,
 					h(`button`, `OK`),
 				]);
 				this._form.method = `dialog`;
+				this._form.addEventListener(`submit`, () => {
+					const text = this._form.querySelector(`textarea`).value;
+					const key = this.app_storagekey;
+					localStorage.setItem(key, text);
+					this.redraw();
+				});
 				this._dialog = h(`dialog`, [this._form]);
 
 				this.appendChild(this._button);
-				this.appendChild(this._text);
-				this.appendChild(this._dialog);
 			}
 
 			connectedCallback() {
 				this._button.addEventListener(`click`, this.on_click);
 				this.redraw();
+				document.body.appendChild(this._dialog);
 			}
 
 			disconnectedCallback() {
 				this._button.removeEventListener(`click`, this.on_click);
+				document.body.removeChild(this._dialog);
 			}
 
 			redraw() {
 				const key = this.app_storagekey;
 				if (key) {
-					this._text.textContent = localStorage.getItem(key) ?? ``;
+					this._button.textContent = localStorage.getItem(key)?.trim() || `notitie aanmaken`;
 				} else {
-					this._text.textContent = ``;
+					this._button.textContent = `notitie aanmaken`;
 				}
 			}
 
 			on_click(e) {
+				const textarea = this._form.querySelector(`textarea`);
+				textarea.value = localStorage.getItem(this.app_storagekey) ?? ``;
 				this._dialog.show();
 			}
 
