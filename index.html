@@ -743,18 +743,42 @@
 			disconnectedCallback() {
 				this._button.removeEventListener(`click`, this.on_click);
 				document.body.removeChild(this._dialog);
+
+				const map = document.querySelector(`app-map`).osm;
+				this.marker?.removeFrom(map);
 			}
 
 			redraw() {
 				const key = this.app_storagekey;
-				if (key) {
-					const text = localStorage.getItem(key)?.trim();
-					this.classList.toggle(`user`, !!text);
-					this._button.textContent = text || `notitie aanmaken`;
+				const text = key && localStorage.getItem(key)?.trim();
+				this.classList.toggle(`user`, !!text);
+				if (text) {
+					this._button.textContent = text;
 				} else {
 					this._button.textContent = `notitie aanmaken`;
 				}
+
+				const lat = this.dataset.lat;
+				const lon = this.dataset.lon;
+
+				const map = document.querySelector(`app-map`).osm;
+
+				this.marker?.removeFrom(map);
+
+
+
+				this.marker = L.circleMarker([lat, lon], {
+					radius: text ? 6 : 3, color: text ?
+						`#202020f0` : `#202020c0`
+				});
+				this.marker.addTo(map);
+				this.marker.on(`click`, this.on_click)
+				this.marker.bindTooltip(`${text}`);
+				if (text) {
+					this.marker.openTooltip();
+				}
 			}
+
 
 			app_open() {
 				const textarea = this._form.querySelector(`textarea`);
@@ -1036,7 +1060,7 @@
 				this.marker.on(`click`, this.on_click_marker)
 				this.marker.on(`mouseover`, this.on_hover)
 				this.marker.on(`mouseout`, this.on_out)
-				this.marker.bindTooltip(`${name} (${transfer})`);
+				this.marker.bindTooltip(`${name}`);
 				if (is_fav) {
 					this.marker.openTooltip();
 				}
