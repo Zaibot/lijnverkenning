@@ -768,8 +768,11 @@
 
 
 				this.marker = L.circleMarker([lat, lon], {
-					radius: text ? 6 : 3, color: text ?
-						`#202020f0` : `#202020c0`
+					radius: text ? 8 : 4,
+					color: `#202020c0`,
+					fill: true,
+					fillOpacity: 0.8,
+					fillColor: text ? `#c020ff` : `#202020`
 				});
 				this.marker.addTo(map);
 				this.marker.on(`click`, this.on_click)
