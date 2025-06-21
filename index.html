@@ -21,6 +21,7 @@
 			height: 100%;
 			margin: 0;
 			font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
+			overflow: hidden;
 		}
 
 		body {
@@ -47,7 +48,7 @@
 		app-main {
 			display: grid;
 			grid-template: auto / 1fr 2fr;
-			height: 100vh;
+			height: 100%;
 			max-height: 100vmax;
 		}
 
@@ -1142,7 +1143,7 @@
 						[parseFloat(nlat), parseFloat(nlon),],
 					]);
 					if (bounds.isValid()) {
-						map.fitBounds(bounds, {maxZoom: 18});
+						map.fitBounds(bounds, {maxZoom: 16});
 					}
 
 				}
@@ -1351,8 +1352,7 @@
 
 
 				});
-				this.appendChild(h(`app-spacer`));
-				this.appendChild(this.preview);
+
 				this.redraw();
 				this.addEventListener(`pointerover`, this.on_hover);
 				this.addEventListener(`pointerout`, this.on_out);
