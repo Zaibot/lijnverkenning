@@ -599,10 +599,17 @@
 			}
 
 			open_shape(shape) {
+				if (!shape) {
+					this.close_shape();
+					return;
+				}
+
 				const doc = this.querySelector(`app-doc`);
 
 				this.selected_shape = shape;
+
 				doc.dataset.src = `static/trips/${shape}.html`;
+
 				this.redraw_step();
 			}
 
@@ -623,7 +630,7 @@
 
 			prev_shape() {
 				const idx = this.shapes.indexOf(this.selected_shape);
-				const prev = (idx - 1) % this.shapes.length;
+				const prev = (this.shapes.length + idx - 1) % this.shapes.length;
 
 				this.open_shape(this.shapes[prev]);
 			}
