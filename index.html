@@ -115,6 +115,21 @@
 
 		}
 
+		app-bar {
+			display: flex;
+			flex-direction: row;
+			align-items: center;
+			flex-wrap: wrap;
+		}
+
+
+		app-list {
+			display: flex;
+			flex-direction: column;
+			align-items: flex-start;
+			flex-wrap: wrap;
+		}
+
 		app-spacer {
 			flex: 1 1 auto;
 		}
@@ -131,6 +146,14 @@
 				display: flex;
 				gap: 0.5rem;
 				align-items: center;
+
+				app-name {
+					flex: 1 0 auto;
+				}
+			}
+
+			&>app-bar {
+				flex: 1 1 100%;
 			}
 
 			app-trip-cell {
@@ -141,9 +164,9 @@
 				align-items: center;
 				flex: 1 0 100%;
 				display: flex;
-				flex-direction: cell;
+				flex-direction: row;
 
-				app-city {
+				app-city-ref {
 					font-weight: inherit;
 					color: #40408080;
 				}
@@ -154,11 +177,6 @@
 			}
 
 
-			header {}
-
-			app-name {
-				flex: 1 0 auto;
-			}
 		}
 
 		app-fav {
@@ -180,6 +198,19 @@
 
 
 		app-city {
+			font-weight: bold;
+			padding: 0.2rem;
+			color: #40408080;
+			display: flex;
+			flex-direction: row;
+			gap: 0.5rem;
+			align-items: center;
+
+			app-doc & {}
+		}
+
+
+		app-city-ref {
 			font-weight: bold;
 			padding: 0.2rem;
 			color: #40408080;
@@ -217,14 +248,6 @@
 					text-transform: uppercase;
 					font-weight: bold;
 				}
-			}
-
-			app-trip-cell {
-				padding-left: 4rem;
-			}
-
-			app-preview {
-				display: none;
 			}
 		}
 
@@ -694,7 +717,7 @@
 				const target = document.querySelectorAll(this.dataset.target);
 
 				for (const el of target) {
-					const sources = el.querySelectorAll(`app-name,app-line,app-city,app-stop,app-stop-ref`);
+					const sources = el.querySelectorAll(`app-name,app-line,app-city,app-city-ref,app-stop,app-stop-ref`);
 					const pending = new Set(words);
 					for (const word of pending) {
 						for (const s of sources) {
@@ -779,9 +802,34 @@
 			}
 
 			connectedCallback() {
-				this.addEventListener(`click`, this.on_click);
-				this.addEventListener(`mouseenter`, this.on_hover);
-				this.addEventListener(`mouseleave`, this.on_leave);
+				this.preview = h(`app-preview`);
+				this.preview.addEventListener(`preview`, (e) => {
+					if (AppPreview.is_close(e.detail)) {
+						this.on_leave();
+						return;
+					}
+
+					this.on_hover();
+				});
+				const before = this.querySelector(`header`);
+
+
+				const group = h(`app-list`);
+				const wrap = h(`app-bar`, [
+					this.preview,
+					group,
+				])
+
+				for (let cur = before.nextSibling; cur;) {
+					const n = cur.nextSibling;
+					group.appendChild(cur);
+					cur = n;
+				}
+
+				this.appendChild(wrap);
+
+				this.querySelector(`header`)?.addEventListener(`click`, this.on_click);
+
 			}
 
 			disconnectedCallback() {
@@ -789,9 +837,7 @@
 				this.polyline?.forEach(x => x.removeFrom(map));
 				this.polyline = [];
 
-				this.removeEventListener(`click`, this.on_click);
-				this.removeEventListener(`mouseenter`, this.on_hover);
-				this.removeEventListener(`mouseleave`, this.on_leave);
+				this.querySelector(`header`)?.removeEventListener(`click`, this.on_click);
 			}
 
 			on_click() {
@@ -945,8 +991,6 @@
 
 				this.preview = h(`app-preview`);
 				this.preview.addEventListener(`preview`, (e) => {
-
-
 					const prev = this.prev_stop?.querySelector(`app-name`)?.textContent ?? `???`;
 					const next = this.next_stop?.querySelector(`app-name`)?.textContent ?? `???`;
 
