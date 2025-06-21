@@ -39,6 +39,16 @@
 			border-radius: 3px;
 		}
 
+		code {
+			white-space: pre;
+			user-select: all;
+			background-color: #ffffff80;
+			display: block;
+			padding: 0.5rem;
+			max-height: 60vh;
+			overflow: auto;
+		}
+
 		.leaflet-container {
 			max-width: 100%;
 			max-height: 100%;
@@ -1280,8 +1290,9 @@
 					}
 					const text = lines.join(`\n`);
 
-					const ta = h(`textarea`, text);
-					ta.rows = 10;
+					const ta = h(`code`, text);
+					ta.readOnly = true;
+					ta.rows = 20;
 					ta.cols = 40;
 					const form = h(`form`, [
 						ta,
