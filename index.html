@@ -123,6 +123,7 @@
 			flex-direction: row;
 			align-items: center;
 			flex-wrap: wrap;
+			gap: 0.5rem;
 		}
 
 
@@ -494,6 +495,7 @@
 		}
 
 		app-search {
+			flex: 1 1 auto;
 			display: flex;
 
 
@@ -540,9 +542,14 @@
 
 	<app-main>
 		<app-side>
-			<app-search data-target="app-doc > app-trip-ref">
-				<input type="text" autocomplete="false" placeholder="Lijnen zoeken..." />
-			</app-search>
+			<app-bar>
+				<app-search data-target="app-doc > app-trip-ref">
+					<input type="text" autocomplete="false" placeholder="Lijnen zoeken..." />
+				</app-search>
+				<button type="button" id="prev">-1</button>
+				<span id="step"></span>
+				<button type=" button" id="next">+1</button>
+			</app-bar>
 			<app-doc data-src="static/trip-ref.html"></app-doc>
 		</app-side>
 		<app-map>
@@ -551,6 +558,78 @@
 
 
 	<script>
+		class AppMain extends HTMLElement {
+			static get doc() {
+				return document.querySelector(`app-main`)
+			}
+
+			constructor() {
+				super();
+				this.shapes = [];
+				this.selected_shape = null;
+
+				this.next_shape = this.next_shape.bind(this)
+				this.prev_shape = this.prev_shape.bind(this)
+			}
+
+			connectedCallback() {
+				this.querySelector(`#prev`).addEventListener(`click`, this.prev_shape);
+				this.querySelector(`#next`).addEventListener(`click`, this.next_shape);
+			}
+
+
+			disconnectedCallback() {
+				this.querySelector(`#prev`).removeEventListener(`click`, this.prev_shape);
+				this.querySelector(`#next`).removeEventListener(`click`, this.next_shape);
+			}
+
+			redraw_step() {
+				const num = this.shapes.indexOf(this.selected_shape) + 1;
+				const len = this.shapes.length;
+				if (num > 0 && len > 0) {
+					this.querySelector(`#step`).textContent = `${num}/${len}`
+				} else {
+					this.querySelector(`#step`).textContent = `${len}`
+				}
+			}
+
+			store_shapes(shapes) {
+				this.shapes = shapes;
+				this.redraw_step();
+			}
+
+			open_shape(shape) {
+				const doc = this.querySelector(`app-doc`);
+
+				this.selected_shape = shape;
+				doc.dataset.src = `static/trips/${shape}.html`;
+				this.redraw_step();
+			}
+
+			close_shape() {
+				const doc = this.querySelector(`app-doc`);
+
+				this.selected_shape = null;
+				doc.dataset.src = `static/trip-ref.html`;
+				this.redraw_step();
+			}
+
+			next_shape() {
+				const idx = this.shapes.indexOf(this.selected_shape);
+				const next = (idx + 1) % this.shapes.length;
+
+				this.open_shape(this.shapes[next]);
+			}
+
+			prev_shape() {
+				const idx = this.shapes.indexOf(this.selected_shape);
+				const prev = (idx - 1) % this.shapes.length;
+
+				this.open_shape(this.shapes[prev]);
+			}
+		}
+		window.customElements.define(`app-main`, AppMain);
+
 		class AppPreview extends HTMLElement {
 			static OPEN = 1;
 			static AUTO_CLOSE = 2;
@@ -763,6 +842,11 @@
 					el.classList.toggle(`app-search-visible`, match);
 					el.classList.toggle(`app-search-hidden`, !match);
 				}
+
+				const results = [...target].filter(x => x.classList.contains(`app-search-visible`)).map(x => x.dataset.shape);
+				if (results.length > 0) {
+					AppMain.doc.store_shapes(results);
+				}
 			}
 		}
 		window.customElements.define(`app-search`, AppSearch);
@@ -872,8 +956,8 @@
 			}
 
 			on_click() {
-				const doc = document.querySelector(`app-doc`);
-				doc.dataset.src = `static/trips/${this.dataset.shape}.html`;
+
+				AppMain.doc.open_shape(this.dataset.shape);
 			}
 
 			on_leave() {
@@ -1248,8 +1332,7 @@
 				const b = h(`button`, `<`);
 				b.type = `button`;
 				b.onclick = () => {
-					const doc = document.querySelector(`app-doc`);
-					doc.dataset.src = `static/trip-ref.html`;
+					AppMain.doc.close_shape();
 				};
 				const header = this.querySelector(`header`);
 				header.insertBefore(b, header.firstChild);
