@@ -737,6 +737,9 @@
 
 			apply_search() {
 				const wildcard = (pattern) => {
+					if (Number(pattern)) {
+						return new RegExp(`(:?\\b${pattern}\\b)`);
+					}
 					return new RegExp(`(:?${pattern})`, `i`);
 				}
 
