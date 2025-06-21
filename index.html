@@ -673,7 +673,10 @@
 				this.removeEventListener(`click`, this.on_click);
 			}
 
-			on_click() {
+			on_click(e) {
+				e.preventDefault();
+				e.stopImmediatePropagation();
+
 				const should = !this.classList.contains(`active`);
 
 				if (!should) {
@@ -986,7 +989,10 @@
 				this.querySelector(`header`)?.removeEventListener(`click`, this.on_click);
 			}
 
-			on_click() {
+			on_click(e) {
+				e.preventDefault();
+				e.stopImmediatePropagation();
+
 
 				AppMain.doc.open_shape(this.dataset.shape);
 			}
@@ -1274,6 +1280,9 @@
 			}
 
 			on_click_button(e) {
+				e.preventDefault();
+				e.stopImmediatePropagation();
+
 				this.app_open();
 			}
 
