@@ -313,6 +313,10 @@
 					padding: 0.5rem;
 					text-transform: uppercase;
 					font-weight: bold;
+					white-space: nowrap;
+					overflow: hidden;
+					min-width: 0;
+					text-overflow: ellipsis;
 				}
 			}
 		}
@@ -486,7 +490,7 @@
 	<app-main>
 		<app-side>
 			<app-search data-target="app-doc > app-trip-ref">
-				<input type="text" autocomplete="false" />
+				<input type="text" autocomplete="false" placeholder="Lijnen zoeken..." />
 			</app-search>
 			<app-doc data-src="static/trip-ref.html"></app-doc>
 		</app-side>
@@ -681,22 +685,27 @@
 			}
 
 			apply_search() {
+				const wildcard = (pattern) => {
+					return new RegExp(`(:?${pattern})`, `i`);
+				}
+
 				const value = this.querySelector(`input`).value;
-				const search = value.split(/\s+/).map(x => x.toLowerCase());
+				const words = value.split(/\s+/).map(wildcard);
 				const target = document.querySelectorAll(this.dataset.target);
 
 				for (const el of target) {
 					const sources = el.querySelectorAll(`app-name,app-line,app-city,app-stop,app-stop-ref`);
-					let match = false;
-					for (const s of sources) {
-						const src = s.textContent.toLowerCase();
-						match |= search.every(si => src.includes(si));
-						if (match) {
-							break;
+					const pending = new Set(words);
+					for (const word of pending) {
+						for (const s of sources) {
+							if (s.textContent.match(word)) {
+								pending.delete(word);
+								break;
+							}
 						}
 					}
 
-
+					const match = pending.size === 0;
 					el.classList.toggle(`app-search-visible`, match);
 					el.classList.toggle(`app-search-hidden`, !match);
 				}
