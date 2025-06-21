@@ -934,26 +934,31 @@
 
 				this.preview = h(`app-preview`);
 				this.preview.addEventListener(`preview`, (e) => {
+
+
+					const prev = this.prev_stop?.querySelector(`app-name`)?.textContent ?? `???`;
+					const next = this.next_stop?.querySelector(`app-name`)?.textContent ?? `???`;
+
 					if (AppPreview.is_close(e.detail)) {
 						this.marker.closeTooltip();
+						this.prev_stop?.close_tooltip?.();
+						this.next_stop?.close_tooltip?.();
+
 						if (AppPreview.is_manual(e.detail)) {
 							this.parentElement?.app_fit?.();
 						}
 						return;
 					}
-					const map = document.querySelector(`app-map`).osm;
 
-					const res = [];
 
-					res.push([parseFloat(this.dataset.lat), parseFloat(this.dataset.lon)]);
+					this.app_fit();
+					//this.marker.openTooltip();
+					this.prev_stop?.show_tooltip?.();
+					this.next_stop?.show_tooltip?.();
 
-					const bounds = L.latLngBounds(res);
-					if (bounds.isValid()) {
-						map.fitBounds(bounds, {maxZoom: 16});
+					for (const el of this._form.querySelectorAll(`app-sign`)) {
+						el.show_marker();
 					}
-
-					this.marker.openTooltip();
-
 				});
 				this.appendChild(this.preview);
 			}
@@ -988,8 +993,6 @@
 				const map = document.querySelector(`app-map`).osm;
 
 				this.marker?.removeFrom(map);
-
-
 
 				this.marker = L.circleMarker([lat, lon], {
 					radius: text ? 8 : 4,
@@ -1122,6 +1125,8 @@
 				const next = this.nextElementSibling;
 				if (!next) {return;}
 
+				const lat = this.dataset.lat;
+				const lon = this.dataset.lon;
 				const plat = prev.dataset.lat;
 				const plon = prev.dataset.lon;
 				const nlat = next.dataset.lat;
@@ -1132,10 +1137,11 @@
 					next.on_hover();
 					const bounds = L.latLngBounds([
 						[parseFloat(plat), parseFloat(plon),],
+						[parseFloat(lat), parseFloat(lon),],
 						[parseFloat(nlat), parseFloat(nlon),],
 					]);
 					if (bounds.isValid()) {
-						map.fitBounds(bounds, {maxZoom: 16});
+						map.fitBounds(bounds, {maxZoom: 18});
 					}
 
 				}
@@ -1416,6 +1422,11 @@
 				this.scrollIntoView({behavior: "smooth", block: "center", inline: "nearest"});
 				this.focus();
 			}
+
+			hide_tooltip() {
+				this.marker.closeTooltip();
+			}
+
 
 			show_tooltip() {
 				this.marker.openTooltip();
