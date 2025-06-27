@@ -291,6 +291,25 @@
 			}
 		}
 
+		app-toggle {
+			display: flex;
+			border-radius: 0.2rem;
+			background-color: #505090;
+			cursor: pointer;
+			padding: 0.1rem;
+			user-select: none;
+
+			app-toggle-option {
+				flex: 1 1 auto;
+				padding: 0.5rem 1.0rem;
+				color: #f0f0ff;
+
+				&:not(:first-of-type) {
+					border-left: 1px solid #f0f0ff;
+				}
+			}
+		}
+
 		app-stops {
 			display: flex;
 			flex-direction: column;
@@ -495,6 +514,21 @@
 			}
 		}
 
+		app-goto {
+			user-select: none;
+			display: inline-block;
+			height: 1.5rem;
+			width: 3.0rem;
+			aspect-ratio: 2/1;
+			background-image: url('eye.svg');
+			background-repeat: no-repeat;
+			background-position: center;
+			background-size: 80%;
+			border-radius: 0.5rem;
+			background-color: #c0c0f080;
+		}
+
+
 		app-preview {
 			user-select: none;
 			display: inline-block;
@@ -534,8 +568,15 @@
 				</app-search>
 				<button type="button" id="prev">-1</button>
 				<span id="step"></span>
-				<button type=" button" id="next">+1</button>
+				<button type="button" id="next">+1</button>
 			</app-bar>
+			<!--<app-bar>
+				<app-toggle>
+					<app-toggle-option>Handmatig</app-toggle-option>
+					<app-toggle-option>Synchroon</app-toggle-option>
+					<app-toggle-option>Locatie</app-toggle-option>
+				</app-toggle>
+				</app-bar>--!>
 			<app-doc data-src="static/trip-ref.html"></app-doc>
 		</app-side>
 		<app-map>
@@ -546,7 +587,11 @@
 	<script>
 		class AppMain extends HTMLElement {
 			static get doc() {
-				return document.querySelector(`app-main`)
+				return document.querySelector(`app-main`);
+			}
+
+			get app_map() {
+				return this.querySelector(`app-map`);
 			}
 
 			constructor() {
@@ -641,6 +686,31 @@
 		}
 		window.customElements.define(`app-main`, AppMain);
 
+		class AppGoto extends HTMLElement {
+			constructor() {
+				super();
+				this.on_click = this.on_click.bind(this);
+
+			}
+
+			connectedCallback() {
+				this.addEventListener(`click`, this.on_click);
+			}
+
+			disconnectedCallback() {
+				this.removeEventListener(`click`, this.on_click);
+			}
+
+			on_click(e) {
+				e.preventDefault();
+				e.stopImmediatePropagation();
+
+				AppMain.doc.querySelector(`app-doc`).dataset.src = this.dataset.src;
+			}
+		}
+		window.customElements.define(`app-goto`, AppGoto);
+
+
 		class AppPreview extends HTMLElement {
 			static OPEN = 1;
 			static AUTO_CLOSE = 2;
@@ -669,7 +739,10 @@
 			}
 
 			disconnectedCallback() {
-				this.emit(AppPreview.AUTO_CLOSE);
+				if (this.classList.contains(`active`)) {
+					this.classList.remove(`active`);
+					this.emit(AppPreview.AUTO_CLOSE);
+				}
 				this.removeEventListener(`click`, this.on_click);
 			}
 
@@ -716,16 +789,39 @@
 			constructor() {
 				super();
 
+				this.on_locationerror = this.on_locationerror.bind(this);
+				this.on_locationfound = this.on_locationfound.bind(this);
+
 				this.osm = L.map(this);
 			}
 
 			connectedCallback() {
+				this.osm.on(`locationerror`, this.on_locationerror);
+				this.osm.on(`locationfound`, this.on_locationfound);
+
 				this.osm.setView([51.981776, 5.902942], 12);
 
 				this.tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
 					attribution: '&copy; <a href=" https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
 				});
 				this.tiles.addTo(this.osm);
+
+				//this.start_follow();
+			}
+
+			disconnectedCallback() {
+				this.osm.off(`locationerror`, this.on_locationerror);
+				this.osm.off(`locationfound`, this.on_locationfound);
+			}
+
+			on_locationerror(e) {
+				console.error(e);
+			}
+
+			on_locationfound(e) {
+				console.info(e);
+
+				this.osm.panTo(e.latlng, {animate: true, duration: 1});
 			}
 
 			start_follow() {
@@ -734,6 +830,7 @@
 					setView: false,
 				});
 			}
+
 			stop_follow() {
 				this.osm.stopLocate();
 			}
@@ -796,6 +893,7 @@
 				e.stopImmediatePropagation();
 
 				this.app_selected = !this.app_selected;
+
 				for (const el of document.querySelectorAll(`app-fav`)) {
 					el.redraw();
 				}
@@ -812,6 +910,10 @@
 				this.on_change = this.on_change.bind(this);
 			}
 
+			get app_input() {
+				return this.querySelector(`input`);
+			}
+
 			get stored_input() {
 				return localStorage.getItem(`app-search-input`) ?? ``;
 			}
@@ -821,20 +923,20 @@
 			}
 
 			connectedCallback() {
-				this.querySelector(`input`).value = this.stored_input;
-				this.querySelector(`input`).addEventListener(`change`, this.on_change);
-				this.querySelector(`input`).addEventListener(`input`, this.on_change);
+				this.app_input.value = this.stored_input;
+				this.app_input.addEventListener(`change`, this.on_change);
+				this.app_input.addEventListener(`input`, this.on_change);
 			}
 
 
 			disconnectedCallback() {
-				this.querySelector(`input`).removeEventListener(`change`, this.on_change);
-				this.querySelector(`input`).removeEventListener(`input`, this.on_change);
+				this.app_input.removeEventListener(`change`, this.on_change);
+				this.app_input.removeEventListener(`input`, this.on_change);
 			}
 
 			on_change(e) {
 				AppMain.doc.close_shape();
-				this.stored_input = this.querySelector(`input`).value;
+				this.stored_input = this.app_input.value;
 				this.apply_search();
 			}
 
@@ -846,7 +948,7 @@
 					return new RegExp(`(:?${pattern})`, `i`);
 				}
 
-				const value = this.querySelector(`input`).value;
+				const value = this.app_input.value;
 				const words = value.split(/\s+/).map(wildcard);
 				const target = document.querySelectorAll(this.dataset.target);
 
@@ -949,6 +1051,10 @@
 				this.on_leave = this.on_leave.bind(this);
 			}
 
+			app_query_stop_refs() {
+				return this.querySelectorAll(`app-stop-ref`);
+			}
+
 			connectedCallback() {
 				this.preview = h(`app-preview`);
 				this.preview.addEventListener(`preview`, (e) => {
@@ -982,7 +1088,7 @@
 			}
 
 			disconnectedCallback() {
-				const map = document.querySelector(`app-map`).osm;
+				const map = AppMain.doc.app_map.osm;
 				this.polyline?.forEach(x => x.removeFrom(map));
 				this.polyline = [];
 
@@ -993,22 +1099,20 @@
 				e.preventDefault();
 				e.stopImmediatePropagation();
 
-
 				AppMain.doc.open_shape(this.dataset.shape);
 			}
 
 			on_leave() {
-				const map = document.querySelector(`app-map`).osm;
+				const map = AppMain.doc.app_map.osm;
 				this.polyline?.forEach(x => x.removeFrom(map));
 				this.polyline = [];
 
 			}
 
 			on_hover() {
-				const map = document.querySelector(`app-map`).osm;
-				const stops1 = [...this.querySelectorAll(`app-stop-ref`)].map(x => [parseFloat(x.dataset.lat),
-				parseFloat(x.dataset.lon)]);
-				const stops = [...this.querySelectorAll(`app-stop-ref`)].map(x => [parseFloat(x.dataset.lat),
+				const map = AppMain.doc.app_map.osm;
+				const stops1 = [...this.app_query_stop_refs].map(x => x.app_latlon);
+				const stops = [...this.app_query_stop_refs].map(x => [parseFloat(x.dataset.lat),
 				parseFloat(x.dataset.lon), x.dataset.id, x.querySelector(`app-name`).textContent,
 				]);
 
@@ -1046,28 +1150,15 @@
 		window.customElements.define(`app-trip-ref`, AppTripRef);
 
 		class AppCity extends HTMLElement {
+			constructor() {
+				super();
+
+				this.on_preview = this.on_preview.bind(this);
+			}
 
 			connectedCallback() {
 				this.preview = h(`app-preview`);
-				this.preview.addEventListener(`preview`, (e) => {
-					if (e.detail === AppPreview.MANUAL_CLOSE) {
-						this.parentElement?.app_fit?.();
-						return;
-					}
-					const map = document.querySelector(`app-map`).osm;
-
-					const res = [];
-					for (let cur = this.nextElementSibling; cur.nextElementSibling?.tagName === `APP-STOP` || cur.nextElementSibling?.tagName === `APP-STOP-TRAVEL`; cur = cur.nextElementSibling) {
-						res.push([parseFloat(cur.dataset.lat), parseFloat(cur.dataset.lon)]);
-						cur.on_parent_fit?.();
-					}
-					const bounds = L.latLngBounds(res);
-					if (bounds.isValid()) {
-						map.fitBounds(bounds, {maxZoom: 16});
-					}
-
-
-				});
+				this.preview.addEventListener(`preview`, this.on_preview);
 				this.appendChild(h(`app-spacer`));
 				this.appendChild(this.preview);
 			}
@@ -1078,6 +1169,27 @@
 
 			app_notes_append(lines) {
 				lines.push(`[${this.textContent}]`);
+			}
+
+			on_preview(e) {
+
+				if (e.detail === AppPreview.MANUAL_CLOSE) {
+					this.parentElement?.app_fit?.();
+					return;
+				}
+				const map = AppMain.doc.app_map.osm;
+
+				const res = [];
+				for (let cur = this.nextElementSibling; cur.nextElementSibling?.tagName === `APP-STOP` || cur.nextElementSibling?.tagName === `APP-STOP-TRAVEL`; cur = cur.nextElementSibling) {
+					res.push(cur.app_latlon);
+					cur.on_parent_fit?.();
+				}
+				const bounds = L.latLngBounds(res);
+				if (bounds.isValid()) {
+					map.fitBounds(bounds, {maxZoom: 16});
+				}
+
+
 			}
 		}
 		window.customElements.define(`app-city`, AppCity);
@@ -1101,6 +1213,10 @@
 					return;
 				}
 				return `stop-travel-${this.app_start}-${this.app_end}`;
+			}
+
+			get app_latlon() {
+				return [parseFloat(this.dataset.lat), parseFloat(this.dataset.lon)];
 			}
 
 			constructor() {
@@ -1162,10 +1278,6 @@
 					//this.marker.openTooltip();
 					this.prev_stop?.show_tooltip?.();
 					this.next_stop?.show_tooltip?.();
-
-					for (const el of this._form.querySelectorAll(`app-sign`)) {
-						el.show_marker();
-					}
 				});
 				this.appendChild(this.preview);
 			}
@@ -1181,7 +1293,7 @@
 					document.body.removeChild(this._dialog);
 				}
 
-				const map = document.querySelector(`app-map`).osm;
+				const map = AppMain.doc.app_map.osm;
 				this.marker?.removeFrom(map);
 			}
 
@@ -1195,14 +1307,11 @@
 					this._button.textContent = `notitie aanmaken`;
 				}
 
-				const lat = this.dataset.lat;
-				const lon = this.dataset.lon;
-
-				const map = document.querySelector(`app-map`).osm;
+				const map = AppMain.doc.app_map.osm;
 
 				this.marker?.removeFrom(map);
 
-				this.marker = L.circleMarker([lat, lon], {
+				this.marker = L.circleMarker(this.app_latlon, {
 					radius: text ? 8 : 4,
 					color: `#202020c0`,
 					fill: true,
@@ -1331,26 +1440,23 @@
 			}
 
 			app_fit() {
-				const map = document.querySelector(`app-map`).osm;
+				const map = AppMain.doc.app_map.osm;
 				const prev = this.previousElementSibling;
 				if (!prev) {return;}
 				const next = this.nextElementSibling;
 				if (!next) {return;}
 
-				const lat = this.dataset.lat;
-				const lon = this.dataset.lon;
-				const plat = prev.dataset.lat;
-				const plon = prev.dataset.lon;
-				const nlat = next.dataset.lat;
-				const nlon = next.dataset.lon;
+				const llcur = this.app_latlon;
+				const llprev = prev.app_latlon;
+				const llnext = next.app_latlon;
 
-				if (plat && plon && nlat && nlon) {
+				if (llcur && llprev && llnext) {
 					prev.on_hover();
 					next.on_hover();
 					const bounds = L.latLngBounds([
-						[parseFloat(plat), parseFloat(plon),],
-						[parseFloat(lat), parseFloat(lon),],
-						[parseFloat(nlat), parseFloat(nlon),],
+						llprev,
+						llcur,
+						llnext,
 					]);
 					if (bounds.isValid()) {
 						map.fitBounds(bounds, {maxZoom: 16});
@@ -1366,6 +1472,18 @@
 				super();
 				this.on_hover = this.on_hover.bind(this);
 				this.on_leave = this.on_leave.bind(this);
+				this.on_export = this.on_export.bind(this);
+			}
+
+			get app_shape() {
+				return this.dataset.shape.split(`;`).map(x => {
+					const [lat, lon] = x.split(`,`);
+					return [parseFloat(lat), parseFloat(lon)];
+				});
+			}
+
+			app_query_stops() {
+				return this.querySelectorAll(`app-stop`);
 			}
 
 			connectedCallback() {
@@ -1379,23 +1497,19 @@
 				const header = this.querySelector(`header`);
 				header.insertBefore(b, header.firstChild);
 
-				const map = document.querySelector(`app-map`).osm;
-				const stops1 = [...this.querySelectorAll(`app-stop`)].map(x => [parseFloat(x.dataset.lat),
-				parseFloat(x.dataset.lon)]);
-				const stops = [...this.querySelectorAll(`app-stop`)].map(x => [parseFloat(x.dataset.lat),
+				const map = AppMain.doc.app_map.osm;
+				const stops1 = [...this.app_query_stops()].map(x => x.app_latlon);
+				const stops = [...this.app_query_stops()].map(x => [parseFloat(x.dataset.lat),
 				parseFloat(x.dataset.lon), x.dataset.id, x.querySelector(`app-name`).textContent,
 				x.querySelector(`app-transfer`).textContent]);
-				const shape = this.dataset.shape.split(`;`).map(x => {
-					const [lat, lon] = x.split(`,`);
-					return [parseFloat(lat), parseFloat(lon)];
-				});
 
 				this.polyline?.forEach(x => x.removeFrom(map));
 
+				const shape = this.app_shape;
 				this.polyline = [
 					L.polyline(
 						shape,
-						{"weight": 3, "color": "#808080c0"},
+						{"weight": 3, "color": "#00000080"},
 					),
 				];
 				const bounds = this.polyline[0].getBounds();
@@ -1407,38 +1521,12 @@
 
 
 				this._export = h(`button`, `TXT`);
-				this._export.addEventListener(`click`, () => {
-					const line = this.querySelector(`app-line`).textContent;
-					const name = this.querySelector(`app-name`).textContent;
-					const lines = [
-						`Lijn ${line} - ${name}`,
-					];
-					for (const el of this.querySelectorAll(`app-city,app-stop:has(app-fav.selected),app-stop-travel`)) {
-						el.app_notes_append?.(lines);
-					}
-					const text = lines.join(`\n`);
-
-					const ta = h(`code`, text);
-					ta.readOnly = true;
-					ta.rows = 20;
-					ta.cols = 40;
-					const form = h(`form`, [
-						ta,
-						h(`button`, `OK`),
-					]);
-					form.method = `dialog`;
-
-					const dialog = h(`dialog`, [form]);
-					document.documentElement.appendChild(dialog);
-					dialog.showModal();
-
-					navigator.clipboard.writeText(text);
-				});
+				this._export.addEventListener(`click`, this.on_export);
 				this.querySelector(`header`).appendChild(this._export);
 			}
 
 			app_fit() {
-				const map = document.querySelector(`app-map`).osm;
+				const map = AppMain.doc.app_map.osm;
 				const bounds = this.polyline[0]?.getBounds();
 				if (bounds?.isValid()) {
 					map.fitBounds(bounds, {maxZoom: 16});
@@ -1450,10 +1538,9 @@
 			}
 
 			disconnectedCallback() {
-				const map = document.querySelector(`app-map`).osm;
+				const map = AppMain.doc.app_map.osm;
 				this.polyline?.forEach(x => x.removeFrom(map));
 				this.polyline = [];
-
 			}
 
 			on_leave() {
@@ -1462,6 +1549,32 @@
 
 			on_hover() {
 
+			}
+
+			on_export() {
+
+				const line = this.querySelector(`app-line`).textContent;
+				const name = this.querySelector(`app-name`).textContent;
+				const lines = [
+					`Lijn ${line} - ${name}`,
+				];
+				for (const el of this.querySelectorAll(`app-city,app-stop:has(app-fav.selected),app-stop-travel`)) {
+					el.app_notes_append?.(lines);
+				}
+				const text = lines.join(`\n`);
+
+				const ta = h(`code`, text);
+				const form = h(`form`, [
+					ta,
+					h(`button`, `OK`),
+				]);
+				form.method = `dialog`;
+
+				const dialog = h(`dialog`, [form]);
+				document.documentElement.appendChild(dialog);
+				dialog.showModal();
+
+				navigator.clipboard.writeText(text);
 			}
 		}
 		window.customElements.define(`app-trip`, AppTrip);
@@ -1475,13 +1588,17 @@
 				this.on_out = this.on_out.bind(this);
 			}
 
+			get app_latlon() {
+				return [parseFloat(this.dataset.lat), parseFloat(this.dataset.lon)];
+			}
+
 			connectedCallback() {
 				this.addEventListener(`pointerover`, this.on_hover);
 				this.addEventListener(`pointerout`, this.on_out);
 			}
 
 			disconnectedCallback() {
-				const map = document.querySelector(`app-map`).osm;
+				const map = AppMain.doc.app_map.osm;
 				this.marker?.removeFrom(map);
 				this.removeEventListener(`pointerover`, this.on_hover);
 				this.removeEventListener(`pointerout`, this.on_out);
@@ -1495,7 +1612,7 @@
 				const name = this.querySelector(`app-name`)?.textContent ?? `?`;
 				const transfer = this.querySelector(`app-transfer`)?.textContent ?? `?`;
 
-				const map = document.querySelector(`app-map`).osm;
+				const map = AppMain.doc.app_map.osm;
 
 				this.marker?.removeFrom(map);
 
@@ -1518,7 +1635,7 @@
 			}
 
 			on_out() {
-				const map = document.querySelector(`app-map`).osm;
+				const map = AppMain.doc.app_map.osm;
 				this.marker?.removeFrom(map);
 
 			}
@@ -1534,34 +1651,23 @@
 				this.on_click_marker = this.on_click_marker.bind(this);
 				this.on_hover = this.on_hover.bind(this);
 				this.on_out = this.on_out.bind(this);
+				this.on_preview = this.on_preview.bind(this);
+			}
+
+			get app_latlon() {
+				return [parseFloat(this.dataset.lat), parseFloat(this.dataset.lon)];
 			}
 
 			connectedCallback() {
+				this.goto_stop = h(`app-goto`, ``, {
+					target: `app-doc`,
+					src: `static/stops/${this.dataset.id}.html`,
+				});
 
 				this.preview = h(`app-preview`);
-				this.preview.addEventListener(`preview`, (e) => {
-					if (AppPreview.is_close(e.detail)) {
-						this.marker.closeTooltip();
-						if (AppPreview.is_manual(e.detail)) {
-							this.parentElement?.app_fit?.();
-						}
-						return;
-					}
+				this.preview.addEventListener(`preview`, this.on_preview);
 
-					const map = document.querySelector(`app-map`).osm;
-
-					const res = [];
-
-					res.push([parseFloat(this.dataset.lat), parseFloat(this.dataset.lon)]);
-
-					const bounds = L.latLngBounds(res);
-					if (bounds.isValid()) {
-						map.fitBounds(bounds, {maxZoom: 16});
-					}
-					this.marker.openTooltip();
-
-
-				});
+				//this.appendChild(this.goto_stop);
 
 				this.redraw();
 				this.addEventListener(`pointerover`, this.on_hover);
@@ -1569,7 +1675,7 @@
 			}
 
 			disconnectedCallback() {
-				const map = document.querySelector(`app-map`).osm;
+				const map = AppMain.doc.app_map.osm;
 				this.marker?.removeFrom(map);
 				this.removeEventListener(`pointerover`, this.on_hover);
 				this.removeEventListener(`pointerout`, this.on_out);
@@ -1582,7 +1688,7 @@
 				const name = this.querySelector(`app-name`)?.textContent ?? `?`;
 				const transfer = this.querySelector(`app-transfer`)?.textContent ?? `?`;
 
-				const map = document.querySelector(`app-map`).osm;
+				const map = AppMain.doc.app_map.osm;
 
 				this.marker?.removeFrom(map);
 
@@ -1650,6 +1756,29 @@
 				this.marker.setRadius(is_fav ? 6 : 4);
 				this.classList.remove(`focus`);
 			}
+
+			on_preview(e) {
+				if (AppPreview.is_close(e.detail)) {
+					this.marker.closeTooltip();
+					if (AppPreview.is_manual(e.detail)) {
+						this.parentElement?.app_fit?.();
+					}
+					return;
+				}
+
+				const map = AppMain.doc.app_map.osm;
+
+				const res = [];
+
+				res.push([parseFloat(this.dataset.lat), parseFloat(this.dataset.lon)]);
+
+				const bounds = L.latLngBounds(res);
+				if (bounds.isValid()) {
+					map.fitBounds(bounds, {maxZoom: 16});
+				}
+				this.marker.openTooltip();
+
+			}
 		}
 		window.customElements.define(`app-stop`, AppStop);
 
@@ -1657,6 +1786,10 @@
 		class AppSign extends HTMLElement {
 			constructor() {
 				super();
+			}
+
+			get app_latlon() {
+				return [parseFloat(this.dataset.lat), parseFloat(this.dataset.lon)];
 			}
 
 			connectedCallback() {
@@ -1668,24 +1801,22 @@
 			}
 
 			hide_marker() {
-				const map = document.querySelector(`app-map`).osm;
+				const map = AppMain.doc.app_map.osm;
 				this.marker?.removeFrom(map);
 			}
 
 			show_marker() {
 				const key = this.dataset.id;
-				const lat = this.dataset.lat;
-				const lon = this.dataset.lon;
 				const name = this.textContent ?? `?`;
 
-				const map = document.querySelector(`app-map`).osm;
+				const map = AppMain.doc.app_map.osm;
 
 				this.marker?.removeFrom(map);
 
 				const is_fav = AppFav.is_selected(`sign-${key}`);
 
 				this.tabIndex = 0;
-				this.marker = L.circleMarker([lat, lon], {
+				this.marker = L.circleMarker(this.app_latlon, {
 					radius: 4,
 					color: `#102080`,
 					fill: `#102080`,
