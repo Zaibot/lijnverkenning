@@ -1276,6 +1276,9 @@
 
 					this.app_fit();
 					//this.marker.openTooltip();
+					for (const stop of document.querySelectorAll(`app-stop`)) {
+						stop.hide_tooltip();
+					}
 					this.prev_stop?.show_tooltip?.();
 					this.next_stop?.show_tooltip?.();
 				});
