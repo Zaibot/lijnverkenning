@@ -14,7 +14,8 @@
 		integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
 	<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
 		integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-
+	<script src="https://cdn.jsdelivr.net/npm/leaflet-geometryutil@0.10.3/src/leaflet.geometryutil.min.js">
+	</script>
 	<style>
 		html,
 		body {
@@ -1501,6 +1502,7 @@
 				this.on_hover = this.on_hover.bind(this);
 				this.on_leave = this.on_leave.bind(this);
 				this.on_export = this.on_export.bind(this);
+				this.on_scroll = this.on_scroll.bind(this);
 			}
 
 			get app_shape() {
@@ -1515,8 +1517,10 @@
 			}
 
 			connectedCallback() {
+				this._scrollContainer = this.parentElement;
 				this.addEventListener(`mouseenter`, this.on_hover);
 				this.addEventListener(`mouseleave`, this.on_leave);
+				this._scrollContainer.addEventListener(`scroll`, this.on_scroll);
 				const b = h(`button`, `<`);
 				b.type = `button`;
 				b.onclick = () => {
@@ -1532,7 +1536,6 @@
 				x.querySelector(`app-transfer`).textContent]);
 
 				this.polyline?.forEach(x => x.removeFrom(map));
-
 				const shape = this.app_shape;
 				this.polyline = [
 					L.polyline(
@@ -1551,6 +1554,42 @@
 				this._export = h(`button`, `TXT`);
 				this._export.addEventListener(`click`, this.on_export);
 				this.querySelector(`header`).appendChild(this._export);
+					map.setZoom(15);
+		
+
+			}
+
+			on_scroll() {
+				this.current_shape_fr();
+			}
+
+			current_shape_fr() {
+				const map = AppMain.doc.app_map.osm;
+				const container = this.parentElement;
+				const view = container.getBoundingClientRect();
+
+				const scrollTop = container.scrollTop;
+				const scrollHeight = container.scrollHeight;
+				const progress = constrain(scrollTop / (scrollHeight - view.height), 0, 1);
+
+				const shape = this.app_shape;
+
+
+				const els = [...this.querySelectorAll(`app-stop,app-stop-travel`)].map(el => {
+					const top = el.offsetTop;
+					const height = el.offsetHeight;
+					const middle = top + height * 0.5;
+					return [middle, parseFloat(el.dataset.shapeFr)];
+				});
+
+				const next = els.findIndex(([m,_]) => m > progress * scrollHeight);
+				const start = els[next-1]
+				const end = els[next]
+				if (start && end) {
+					const fr = start[1] + (end[1] - start[1]) * 0.5;
+					const iol = L.GeometryUtil.interpolateOnLine(map, shape, fr);
+					map.panTo(iol.latLng);
+				}
 			}
 
 			app_fit() {
@@ -1569,6 +1608,7 @@
 				const map = AppMain.doc.app_map.osm;
 				this.polyline?.forEach(x => x.removeFrom(map));
 				this.polyline = [];
+				this._scrollContainer.removeEventListener(`scroll`, this.on_scroll);
 			}
 
 			on_leave() {
