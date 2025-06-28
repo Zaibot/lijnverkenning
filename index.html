@@ -1129,7 +1129,7 @@
 				];
 				const bounds = this.polyline[0].getBounds();
 				if (bounds.isValid()) {
-					map.fitBounds(bounds.pad(0.12));
+					map.fitBounds(bounds.pad(0.12), { maxZoom: 16 });
 				}
 
 				for (const [lat, lon, key, name, transfer] of stops) {
@@ -1189,7 +1189,7 @@
 				}
 				const bounds = L.latLngBounds(res);
 				if (bounds.isValid()) {
-					map.fitBounds(bounds.pad(0.12));
+					map.fitBounds(bounds.pad(0.12), { maxZoom: 16 });
 				}
 
 
@@ -1477,7 +1477,7 @@
 						llnext,
 					]);
 					if (bounds.isValid()) {
-					map.fitBounds(bounds.pad(0.12));
+					map.fitBounds(bounds.pad(0.12), { maxZoom: 16 });
 					}
 
 				}
@@ -1532,7 +1532,7 @@
 				];
 				const bounds = this.polyline[0].getBounds();
 				if (bounds.isValid()) {
-					map.fitBounds(bounds.pad(0.12));
+					map.fitBounds(bounds.pad(0.12), { maxZoom: 16 });
 				}
 
 				this.polyline?.forEach(x => x.addTo(map));
@@ -1547,7 +1547,7 @@
 				const map = AppMain.doc.app_map.osm;
 				const bounds = this.polyline[0]?.getBounds();
 				if (bounds?.isValid()) {
-					map.fitBounds(bounds.pad(0.12));
+					map.fitBounds(bounds.pad(0.12), { maxZoom: 16 });
 				}
 
 				for (const el of this.querySelectorAll('app-stop,app-stop-travel')) {
@@ -1792,7 +1792,7 @@
 
 				const bounds = L.latLngBounds(res);
 				if (bounds.isValid()) {
-					map.fitBounds(bounds.pad(0.12));
+					map.fitBounds(bounds.pad(0.12), { maxZoom: 16 });
 				}
 				this.marker.openTooltip();
 
