@@ -60,13 +60,12 @@
 			display: grid;
 			grid-template: auto / 1fr 2fr;
 			height: 100%;
-			max-height: 100vmax;
-			grid-template: "map" "side" 1fr 2fr / auto;
+			grid-template: "side map" auto / 1fr 2fr;
 
 			@media (orientation: portrait) {
 				grid-template:
-					"map" 1fr
-					"side" 2fr / 1fr;
+					"side" 3fr
+					"map" 2fr / 1fr;
 			}
 		}
 
@@ -436,8 +435,7 @@
 			padding: 0.5rem;
 			box-sizing: border-box;
 
-			grid-area: "side";
-			max-height: 100vmin;
+			grid-area: side;
 			min-width: 20rem;
 			min-height: 20rem;
 
@@ -452,7 +450,9 @@
 
 		app-map {
 			display: grid;
-			grid-area: "map";
+			grid-area: map;
+			min-width: 8rem;
+			min-height: 8rem;
 		}
 
 
