@@ -1318,7 +1318,7 @@
 				this.marker?.removeFrom(map);
 
 				this.marker = L.circleMarker(this.app_latlon, {
-					radius: text ? 8 : 4,
+					radius: text ? 6 : 3,
 					color: `#202020c0`,
 					fill: true,
 					fillOpacity: 0.8,
@@ -1340,20 +1340,23 @@
 			on_hover() {
 				const key = this.app_storagekey;
 				const text = key && localStorage.getItem(key)?.trim();
-				this.marker.setRadius(12);
+
+				this.marker.setRadius(8);
 				this.classList.add(`focus`);
 			}
 
 			on_out() {
-				const key = this.dataset.id;
+				const key = this.app_storagekey;
 				const text = key && localStorage.getItem(key)?.trim();
-				this.marker.setRadius(text ? 8 : 4);
+
+				this.marker.setRadius(text ? 6 : 3);
 				this.classList.remove(`focus`);
 			}
 
 			on_parent_fit() {
-				const key = this.dataset.id;
+				const key = this.app_storagekey;
 				const text = key && localStorage.getItem(key)?.trim();
+
 				if (text) {
 					this.marker.openTooltip();
 				}
@@ -1469,8 +1472,15 @@
 				const llnext = next.app_latlon;
 
 				if (llcur && llprev && llnext) {
+					for (const stop of document.querySelectorAll(`app-stop`)) {
+						stop.on_out();
+					}
+					for (const travel of document.querySelectorAll(`app-stop-travel`)) {
+						travel.on_out();
+					}
 					prev.on_hover();
 					next.on_hover();
+					this.on_hover();
 					const bounds = L.latLngBounds([
 						llprev,
 						llcur,
@@ -1720,8 +1730,11 @@
 				});
 				*/
 				this.marker = L.circleMarker([lat, lon], {
-					radius: is_fav ? 6 : 4, color: is_fav ?
-						`#ff2020c0` : `#2020ff80`
+					radius: is_fav ? 6 : 3, 
+					color: is_fav ? `#ff2020` : `#2020ff`,
+					fill: true,
+					fillColor: is_fav ? `#ff2020c0` : `#2020ff80`,
+					fillOpacity: 0.5,
 				});
 				this.marker.addTo(map);
 				this.marker.on(`click`, this.on_click_marker)
@@ -1753,6 +1766,14 @@
 				this.classList.add(`focus`);
 			}
 
+			on_out() {
+				const key = this.dataset.id;
+				const is_fav = AppFav.is_selected(`stop-${key}`);
+
+				this.marker.setRadius(is_fav ? 6 : 3);
+				this.classList.remove(`focus`);
+			}
+
 			on_click_marker() {
 				this.scrollIntoView({behavior: "smooth", block: "center", inline: "nearest"});
 				this.focus();
@@ -1767,13 +1788,6 @@
 				this.marker.openTooltip();
 			}
 
-			on_out() {
-				const key = this.dataset.id;
-				const is_fav = AppFav.is_selected(`stop-${key}`);
-
-				this.marker.setRadius(is_fav ? 6 : 4);
-				this.classList.remove(`focus`);
-			}
 
 			on_preview(e) {
 				if (AppPreview.is_close(e.detail)) {
