@@ -1432,18 +1432,30 @@
 			}
 
 			get prev_stop() {
-				return this.previousElementSibling;
+				for (let cur = this.previousElementSibling; cur; cur = cur.previousElementSibling) {
+					if (cur.tagName === `APP-STOP`) {
+						return cur;
+					}
+				}
+
+				return null;
 			}
 
 			get next_stop() {
-				return this.nextElementSibling;
+				for (let cur = this.nextElementSibling; cur; cur = cur.nextElementSibling) {
+					if (cur.tagName === `APP-STOP`) {
+						return cur;
+					}
+				}
+
+				return null;
 			}
 
 			app_fit() {
 				const map = AppMain.doc.app_map.osm;
-				const prev = this.previousElementSibling;
+				const prev = this.prev_stop;
 				if (!prev) {return;}
-				const next = this.nextElementSibling;
+				const next = this.next_stop;
 				if (!next) {return;}
 
 				const llcur = this.app_latlon;
