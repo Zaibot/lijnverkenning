@@ -87,14 +87,7 @@
 		}
 
 
-		app-side {
-			grid-area: "side";
-			max-height: 100vmin;
 
-			&>app-bar {
-				flex-wrap: nowrap;
-			}
-		}
 
 
 		app-doc {
@@ -436,14 +429,21 @@
 		}
 
 		app-side {
-			grid-area: 1/1;
 			display: flex;
 			flex-direction: column;
-			min-width: 5rem;
 			background-color: #f0f0ff;
 			gap: 0.5rem;
 			padding: 0.5rem;
 			box-sizing: border-box;
+
+			grid-area: "side";
+			max-height: 100vmin;
+			min-width: 20rem;
+			min-height: 20rem;
+
+			&>app-bar {
+				flex-wrap: nowrap;
+			}
 
 			&>header {
 				font-weight: bold;
@@ -792,7 +792,9 @@
 				this.on_locationerror = this.on_locationerror.bind(this);
 				this.on_locationfound = this.on_locationfound.bind(this);
 
-				this.osm = L.map(this);
+				this.osm = L.map(this, {
+					doubleClickZoom: false,
+				});
 			}
 
 			connectedCallback() {
@@ -1039,6 +1041,8 @@
 						match.focus();
 					}
 				}
+
+				AppMain.doc.app_map.osm.invalidateSize();
 			}
 		}
 		window.customElements.define(`app-doc`, AppDoc);
