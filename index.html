@@ -1273,11 +1273,13 @@
 				this.on_click_button = this.on_click_button.bind(this);
 				this.on_click_marker = this.on_click_marker.bind(this);
 				this.on_click_tooltip = this.on_click_tooltip.bind(this);
+				this.on_pointerdown = this.on_pointerdown.bind(this);
 				this.on_hover = this.on_hover.bind(this);
 				this.on_out = this.on_out.bind(this);
 				this.on_change = this.on_change.bind(this);
 				this.on_leave = this.on_leave.bind(this);
 				this.on_closed = this.on_closed.bind(this);
+
 				this._button = h(`button`, `notitie aanmaken`);
 				this._button.addEventListener(`pointerover`, this.on_hover);
 				this._button.addEventListener(`pointerout`, this.on_out);
@@ -1334,12 +1336,16 @@
 			}
 
 			connectedCallback() {
+				this.addEventListener(`pointerdown`, this.on_pointerdown);
+				this.addEventListener(`pointerup`, this.on_out);
 				this._button.addEventListener(`click`, this.on_click_button);
 				this.redraw();
 			}
 
 			disconnectedCallback() {
-				this._button.removeEventListener(`click`, this.on_click_button);
+				this.removeEventListener(`pointerdown`, this.on_pointerdown);
+				this.removeEventListener(`pointerup`, this.on_out);
+					this._button.removeEventListener(`click`, this.on_click_button);
 				if (this._dialog.parentElement) {
 					document.body.removeChild(this._dialog);
 				}
@@ -1381,7 +1387,24 @@
 				}
 			}
 
+			on_pointerdown() {
+				const map = AppMain.doc.app_map.osm;
 
+				const zoom = map.getZoom();
+				const minZoom = 12;
+				if (zoom < minZoom) {
+					map.setZoom(minZoom, { animate: false });
+				}
+
+				map.panTo(this.app_latlon);
+
+				const key = this.app_storagekey;
+				const text = key && localStorage.getItem(key)?.trim();
+
+				this.marker.setRadius(8);
+				this.classList.add(`focus`);
+				}
+	
 			on_hover() {
 				const key = this.app_storagekey;
 				const text = key && localStorage.getItem(key)?.trim();
