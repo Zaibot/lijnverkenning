@@ -625,6 +625,9 @@
 
 
 	<script>
+		const POINT_SIZE = 4;
+		const POINT_SIZE_IMPORTANT = 6;
+
 		class AppMain extends HTMLElement {
 			static get doc() {
 				return document.querySelector(`app-main`);
@@ -1177,7 +1180,7 @@
 				for (const [lat, lon, key, name, transfer] of stops) {
 					const is_fav = AppFav.is_selected(`stop-${key}`);
 					const marker_end = L.circleMarker([lat, lon], {
-						radius: is_fav ? 6 : 4, color: is_fav ?
+						radius: is_fav ? POINT_SIZE_IMPORTANT : POINT_SIZE, color: is_fav ?
 							`#ff2020c0` : `#2020ff80`
 					});
 					marker_end.addTo(map);
@@ -1360,7 +1363,7 @@
 				this.marker?.removeFrom(map);
 
 				this.marker = L.circleMarker(this.app_latlon, {
-					radius: text ? 4 : 2,
+					radius: text ? POINT_SIZE_IMPORTANT : POINT_SIZE,
 					color: `#202020c0`,
 					fill: true,
 					fillOpacity: 1,
@@ -1391,7 +1394,7 @@
 				const key = this.app_storagekey;
 				const text = key && localStorage.getItem(key)?.trim();
 
-				this.marker.setRadius(text ? 4 : 2);
+				this.marker.setRadius(text ? POINT_SIZE_IMPORTANT : POINT_SIZE);
 				this.classList.remove(`focus`);
 			}
 
@@ -1727,7 +1730,7 @@
 
 				this.tabIndex = 0;
 				this.marker = L.circleMarker([lat, lon], {
-					radius: is_fav ? 4 : 2, color: is_fav ?
+					radius: is_fav ? POINT_SIZE_IMPORTANT : POINT_SIZE, color: is_fav ?
 						`#ff2020c0` : `#2020ff80`
 				});
 				this.marker.addTo(map);
@@ -1808,7 +1811,7 @@
 				});
 				*/
 				this.marker = L.circleMarker(this.app_latlon, {
-					radius: is_fav ? 4 : 2, 
+					radius: is_fav ? POINT_SIZE_IMPORTANT : POINT_SIZE, 
 					color: is_fav ? `#f02020` : `#2020f0`,
 					fill: true,
 					fillColor: is_fav ? `#f02020` : `#2020f0`,
@@ -1865,7 +1868,7 @@
 				const key = this.dataset.id;
 				const is_fav = AppFav.is_selected(`stop-${key}`);
 
-				this.marker.setRadius(is_fav ? 4 : 2);
+				this.marker.setRadius(is_fav ? POINT_SIZE_IMPORTANT : POINT_SIZE_IMPORTANT);
 				this.classList.remove(`focus`);
 			}
 
@@ -1949,7 +1952,7 @@
 
 				this.tabIndex = 0;
 				this.marker = L.circleMarker(this.app_latlon, {
-					radius: 4,
+					radius: POINT_SIZE,
 					color: `#102080`,
 					fill: `#102080`,
 					fillOpacity: 1.0,
