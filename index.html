@@ -1404,6 +1404,9 @@
 				this.marker.setRadius(8);
 				this.classList.add(`focus`);
 
+				for (const el of document.querySelectorAll(`app-stop`)) {
+					el.hide_tooltip();
+				}
 				this.prev_stop?.show_tooltip?.();
 				this.next_stop?.show_tooltip?.();
 
@@ -1424,8 +1427,6 @@
 				this.marker.setRadius(text ? POINT_SIZE_IMPORTANT : POINT_SIZE);
 				this.classList.remove(`focus`);
 
-				this.prev_stop?.hide_tooltip?.();
-				this.next_stop?.hide_tooltip?.();
 
 			}
 
