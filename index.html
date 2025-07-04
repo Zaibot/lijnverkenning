@@ -1874,9 +1874,8 @@
 
 			on_click_marker() {
 				this.scrollIntoView({behavior: "smooth", block: "center", inline: "nearest"});
-				this.focus();
-
-						}
+				this.show_tooltip();
+			}
 
 			hide_tooltip() {
 				this.marker.closeTooltip();
