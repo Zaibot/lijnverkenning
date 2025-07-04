@@ -1403,6 +1403,10 @@
 
 				this.marker.setRadius(8);
 				this.classList.add(`focus`);
+
+				this.prev_stop?.show_tooltip?.();
+				this.next_stop?.show_tooltip?.();
+
 				}
 	
 			on_hover() {
@@ -1419,6 +1423,10 @@
 
 				this.marker.setRadius(text ? POINT_SIZE_IMPORTANT : POINT_SIZE);
 				this.classList.remove(`focus`);
+
+				this.prev_stop?.hide_tooltip?.();
+				this.next_stop?.hide_tooltip?.();
+
 			}
 
 			on_parent_fit() {
