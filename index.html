@@ -63,7 +63,11 @@
 			border-radius: 0.1rem;
 			color: #fff;
 			box-shadow: none;
-			padding: 0.0rem 0.2rem;
+			padding: 0.1rem 0.3rem;
+
+			&.app-fav {
+				background-color: #502020;
+			}
 		}
 
 		.leaflet-tooltip-left:before {
@@ -1589,7 +1593,7 @@
 				this._export = h(`button`, `TXT`);
 				this._export.addEventListener(`click`, this.on_export);
 				this.querySelector(`header`).appendChild(this._export);
-					map.setZoom(15);
+					//map.setZoom(15);
 		
 
 			}
@@ -1839,7 +1843,7 @@
 				const map = AppMain.doc.app_map.osm;
 
 				const zoom = map.getZoom();
-				const minZoom = 14;
+				const minZoom = 12;
 				if (zoom < minZoom) {
 				map.setZoom(minZoom, { animate: false });
 				}
@@ -1877,8 +1881,11 @@
 
 
 			show_tooltip() {
+				const key = this.dataset.id;
+				const is_fav = AppFav.is_selected(`stop-${key}`);
+
 				const name = this.querySelector(`app-name`)?.textContent ?? `?`;
-				this.marker.bindTooltip(`${name}`);
+				this.marker.bindTooltip(`${name}`, { className: is_fav ? `app-fav`: undefined });
 				this.marker.openTooltip();
 			}
 
