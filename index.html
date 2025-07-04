@@ -57,6 +57,46 @@
 			z-index: 0;
 		}
 
+		.leaflet-tooltip {
+			background-color: #202050;
+			border: 1px solid #ffffff;
+			border-radius: 0.1rem;
+			color: #fff;
+			box-shadow: none;
+			padding: 0.0rem 0.2rem;
+		}
+
+		.leaflet-tooltip-left:before {
+			border-left-color: #202050f0;
+		}
+
+		.leaflet-tooltip-right:before {
+			border-right-color: #202050f0;
+		}
+
+		.leaflet-tooltip-top:before {
+			border-top-color: #202050f0;
+		}
+
+		.leaflet-tooltip-bottom:before {
+			border-bottom-color: #202050f0;
+		}
+
+		app-trip-ref.app-search-hidden {
+			display: none;
+		}
+
+		app-keyword {
+			display: none;
+			font-family: monospace;
+			color: #f04040;
+			font-size: 0.8rem;
+
+			&.app-search-match {
+				display: block;
+			}
+		}
+
 		app-main {
 			display: grid;
 			grid-template: auto / 1fr 2fr;
@@ -484,10 +524,6 @@
 			padding: 0.5rem;
 		}
 
-		.app-search-hidden {
-			display: none;
-		}
-
 		button {
 			font-family: inherit;
 			display: flex;
@@ -896,7 +932,7 @@
 
 				this.app_selected = !this.app_selected;
 
-				for (const el of document.querySelectorAll(`app-fav`)) {
+				for (const el of document.querySelectorAll(`app-fav,app-stop,app-stop-travel`)) {
 					el.redraw();
 				}
 			}
@@ -951,18 +987,19 @@
 				}
 
 				const value = this.app_input.value;
-				const words = value.split(/\s+/).map(wildcard);
+				const words = value.split(/[\s,.:;]+/).filter(Boolean).map(wildcard);
 				const target = document.querySelectorAll(this.dataset.target);
 
 				for (const el of target) {
-					const sources = el.querySelectorAll(`app-name,app-line,app-city,app-city-ref,app-stop,app-stop-ref`);
+					const sources = el.querySelectorAll(`app-name,app-line,app-city,app-city-ref,app-stop,app-stop-ref,app-keyword`);
 					const pending = new Set(words);
 					for (const word of pending) {
 						for (const s of sources) {
-							if (s.textContent.match(word)) {
+							const match = s.textContent.match(word);
+							if (match) {
 								pending.delete(word);
-								break;
 							}
+							s.classList.toggle(`app-search-match`, !!value && match);
 						}
 					}
 
@@ -1055,7 +1092,7 @@
 				this.on_leave = this.on_leave.bind(this);
 			}
 
-			app_query_stop_refs() {
+			get app_query_stop_refs() {
 				return this.querySelectorAll(`app-stop-ref`);
 			}
 
@@ -1130,7 +1167,7 @@
 				];
 				const bounds = this.polyline[0].getBounds();
 				if (bounds.isValid()) {
-					map.fitBounds(bounds.pad(0.12), { maxZoom: 16 });
+					map.fitBounds(bounds.pad(0.04), { maxZoom: 16 });
 				}
 
 				for (const [lat, lon, key, name, transfer] of stops) {
@@ -1190,7 +1227,7 @@
 				}
 				const bounds = L.latLngBounds(res);
 				if (bounds.isValid()) {
-					map.fitBounds(bounds.pad(0.12), { maxZoom: 16 });
+					map.fitBounds(bounds.pad(0.04), { maxZoom: 16 });
 				}
 
 
@@ -1319,10 +1356,10 @@
 				this.marker?.removeFrom(map);
 
 				this.marker = L.circleMarker(this.app_latlon, {
-					radius: text ? 6 : 3,
+					radius: text ? 4 : 2,
 					color: `#202020c0`,
 					fill: true,
-					fillOpacity: 0.8,
+					fillOpacity: 1,
 					fillColor: text ? `#c020ff` : `#202020`
 				});
 				this.marker.addTo(map);
@@ -1350,7 +1387,7 @@
 				const key = this.app_storagekey;
 				const text = key && localStorage.getItem(key)?.trim();
 
-				this.marker.setRadius(text ? 6 : 3);
+				this.marker.setRadius(text ? 4 : 2);
 				this.classList.remove(`focus`);
 			}
 
@@ -1413,14 +1450,12 @@
 					return;
 				}
 				this.scrollIntoView({behavior: "smooth", block: "center", inline: "nearest"});
-				this.focus();
 				this.marker.openTooltip();
 			}
 
 
 			on_click_tooltip(e) {
 				this.scrollIntoView({behavior: "smooth", block: "center", inline: "nearest"});
-				this.focus();
 				this.app_open();
 			}
 
@@ -1540,12 +1575,12 @@
 				this.polyline = [
 					L.polyline(
 						shape,
-						{"weight": 3, "color": "#00000080"},
+						{"weight": 2, "color": "#000000C0"},
 					),
 				];
 				const bounds = this.polyline[0].getBounds();
 				if (bounds.isValid()) {
-					map.fitBounds(bounds.pad(0.12), { maxZoom: 16 });
+					map.fitBounds(bounds.pad(0.04), { maxZoom: 16 });
 				}
 
 				this.polyline?.forEach(x => x.addTo(map));
@@ -1596,7 +1631,7 @@
 				const map = AppMain.doc.app_map.osm;
 				const bounds = this.polyline[0]?.getBounds();
 				if (bounds?.isValid()) {
-					map.fitBounds(bounds.pad(0.12), { maxZoom: 16 });
+					map.fitBounds(bounds.pad(0.04), { maxZoom: 16 });
 				}
 
 				for (const el of this.querySelectorAll('app-stop,app-stop-travel')) {
@@ -1688,7 +1723,7 @@
 
 				this.tabIndex = 0;
 				this.marker = L.circleMarker([lat, lon], {
-					radius: is_fav ? 6 : 4, color: is_fav ?
+					radius: is_fav ? 4 : 2, color: is_fav ?
 						`#ff2020c0` : `#2020ff80`
 				});
 				this.marker.addTo(map);
@@ -1717,6 +1752,7 @@
 				super();
 
 				this.on_click_marker = this.on_click_marker.bind(this);
+				this.on_click = this.on_click.bind(this);
 				this.on_hover = this.on_hover.bind(this);
 				this.on_out = this.on_out.bind(this);
 				this.on_preview = this.on_preview.bind(this);
@@ -1738,6 +1774,7 @@
 				//this.appendChild(this.goto_stop);
 
 				this.redraw();
+				this.addEventListener(`pointerdown`, this.on_click);
 				this.addEventListener(`pointerover`, this.on_hover);
 				this.addEventListener(`pointerout`, this.on_out);
 			}
@@ -1745,16 +1782,13 @@
 			disconnectedCallback() {
 				const map = AppMain.doc.app_map.osm;
 				this.marker?.removeFrom(map);
+				this.removeEventListener(`pointerdown`, this.on_click);
 				this.removeEventListener(`pointerover`, this.on_hover);
 				this.removeEventListener(`pointerout`, this.on_out);
 			}
 
 			redraw() {
 				const key = this.dataset.id;
-				const lat = this.dataset.lat;
-				const lon = this.dataset.lon;
-				const name = this.querySelector(`app-name`)?.textContent ?? `?`;
-				const transfer = this.querySelector(`app-transfer`)?.textContent ?? `?`;
 
 				const map = AppMain.doc.app_map.osm;
 
@@ -1769,20 +1803,20 @@
 					icon: stopIcon,
 				});
 				*/
-				this.marker = L.circleMarker([lat, lon], {
-					radius: is_fav ? 6 : 3, 
-					color: is_fav ? `#ff2020` : `#2020ff`,
+				this.marker = L.circleMarker(this.app_latlon, {
+					radius: is_fav ? 4 : 2, 
+					color: is_fav ? `#f02020` : `#2020f0`,
 					fill: true,
-					fillColor: is_fav ? `#ff2020c0` : `#2020ff80`,
-					fillOpacity: 0.5,
+					fillColor: is_fav ? `#f02020` : `#2020f0`,
+					fillOpacity: 1.0,
 				});
 				this.marker.addTo(map);
 				this.marker.on(`click`, this.on_click_marker)
 				this.marker.on(`mouseover`, this.on_hover)
 				this.marker.on(`mouseout`, this.on_out)
-				this.marker.bindTooltip(`${name}`);
+
 				if (is_fav) {
-					this.marker.openTooltip();
+					this.show_tooltip();
 				}
 			}
 
@@ -1790,7 +1824,7 @@
 				const key = this.dataset.id;
 				const is_fav = AppFav.is_selected(`stop-${key}`);
 				if (is_fav) {
-					this.marker.openTooltip();
+					this.show_tooltip();
 				}
 			}
 
@@ -1801,8 +1835,25 @@
 			}
 
 
+		on_click() {
+				const map = AppMain.doc.app_map.osm;
+
+				const zoom = map.getZoom();
+				const minZoom = 14;
+				if (zoom < minZoom) {
+				map.setZoom(minZoom, { animate: false });
+				}
+
+				map.panTo(this.app_latlon);
+
+				for (const stop of document.querySelectorAll(`app-stop`)) {
+					stop.hide_tooltip();
+				}
+				this.show_tooltip();
+			}
+
 			on_hover() {
-				this.marker.setRadius(12);
+				this.marker.setRadius(8);
 				this.classList.add(`focus`);
 			}
 
@@ -1810,14 +1861,15 @@
 				const key = this.dataset.id;
 				const is_fav = AppFav.is_selected(`stop-${key}`);
 
-				this.marker.setRadius(is_fav ? 6 : 3);
+				this.marker.setRadius(is_fav ? 4 : 2);
 				this.classList.remove(`focus`);
 			}
 
 			on_click_marker() {
 				this.scrollIntoView({behavior: "smooth", block: "center", inline: "nearest"});
 				this.focus();
-			}
+
+						}
 
 			hide_tooltip() {
 				this.marker.closeTooltip();
@@ -1825,6 +1877,8 @@
 
 
 			show_tooltip() {
+				const name = this.querySelector(`app-name`)?.textContent ?? `?`;
+				this.marker.bindTooltip(`${name}`);
 				this.marker.openTooltip();
 			}
 
@@ -1848,8 +1902,7 @@
 				if (bounds.isValid()) {
 					map.fitBounds(bounds.pad(0.12), { maxZoom: 16 });
 				}
-				this.marker.openTooltip();
-
+				this.show_tooltip();
 			}
 		}
 		window.customElements.define(`app-stop`, AppStop);
