@@ -715,6 +715,15 @@
 				window.addEventListener(`resize`, this.on_resize);
 				this.querySelector(`#prev`).addEventListener(`click`, this.prev_shape);
 				this.querySelector(`#next`).addEventListener(`click`, this.next_shape);
+				window.addEventListener(`popstate`, (e) => {
+					const d = e.state;
+
+					if (d?.shape) {
+						this.open_shape(d.shape);
+					}else {
+						this.close_shape();
+					}
+				});
 			}
 
 
@@ -756,6 +765,11 @@
 				this.redraw_step();
 			}
 
+			goto_open_shape(shape) {
+				this.open_shape(shape);
+				window.history.pushState({ shape }, `Shape: ${shape}`, `#shape=${shape}`);
+			}
+
 			close_shape() {
 				const doc = this.querySelector(`app-doc`);
 				const src = `static/trip-ref.html`;
@@ -770,14 +784,14 @@
 				const idx = this.shapes.indexOf(this.selected_shape);
 				const next = (idx + 1) % this.shapes.length;
 
-				this.open_shape(this.shapes[next]);
+				this.goto_open_shape(this.shapes[next]);
 			}
 
 			prev_shape() {
 				const idx = this.shapes.indexOf(this.selected_shape);
 				const prev = (this.shapes.length + idx - 1) % this.shapes.length;
 
-				this.open_shape(this.shapes[prev]);
+				this.goto_open_shape(this.shapes[prev]);
 			}
 
 			on_resize() {
@@ -1266,7 +1280,7 @@
 				e.preventDefault();
 				e.stopImmediatePropagation();
 
-				AppMain.doc.open_shape(this.dataset.shape);
+				AppMain.doc.goto_open_shape(this.dataset.shape);
 			}
 
 			on_leave() {
