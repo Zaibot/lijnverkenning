@@ -664,6 +664,7 @@
 						placeholder="Lijnen zoeken..." />
 					<datalist id="search-keywords"></datalist>
 				</app-search>
+				<button type="button" id="locate">◉</button>
 				<button type="button" id="prev">-1</button>
 				<span id="step"></span>
 				<button type="button" id="next">+1</button>
@@ -958,6 +959,8 @@
 				});
 				this.tiles.addTo(this.osm);
 
+				document.querySelector(`#locate`).addEventListener(`click`, () => this.locate());
+
 				//this.start_follow();
 			}
 
@@ -973,8 +976,16 @@
 			on_locationfound(e) {
 				console.info(e);
 
-				this.osm.panTo(e.latlng, {animate: true, duration: 1});
+				to_grid(e.latlng.lat, e.latlng.lng);
+				this.osm.flyTo(e.latlng, 15, {animate: true, duration: 1});
 			}
+
+			locate() {
+				this.osm.locate({
+					setView: false,
+				});
+			}
+
 
 			start_follow() {
 				this.osm.locate({
@@ -1132,6 +1143,13 @@
 			apply_search() {
 				const wildcard = (pattern) => {
 					if (Number(pattern)) {
+						return new RegExp(`(:?\\b${pattern})\\b`, `g`);
+					}
+					return new RegExp(`(:?\\b${pattern})`, `gi`);
+				}
+
+				const wildcard2 = (pattern) => {
+					if (Number(pattern)) {
 						return new RegExp(`(:?\\b${pattern})([0-9]*)\\b`, `g`);
 					}
 					return new RegExp(`(:?\\b${pattern})([a-z]*)`, `gi`);
@@ -1139,6 +1157,7 @@
 
 				const value = this.app_input.value;
 				const words = value.split(/[\s,.:;]+/).filter(Boolean).map(wildcard);
+				const words2 = value.split(/[\s,.:;]+/).filter(Boolean).map(wildcard2);
 				const target = document.querySelectorAll(this.dataset.target);
 				const matches = new Set();
 				const kw_matches_all = new Set();
@@ -1146,8 +1165,6 @@
 				const kw_remainder = new Set();
 
 				for (const el of target) {
-					const pending = new Set(words);
-
 					const res = new Set();
 					const match = el.app_keywords.app_match(words, res);
 
@@ -1156,13 +1173,16 @@
 					if (match) {
 						matches.add(el);
 						el.app_keywords.textContent = [...res].join(`, `);
-						
-						for (const kw of el.app_keywords.app_keywords) {
-							const r = words[words.length - 1]?.exec(kw);
-							if (r && r[2]) {
-								kw_remainder.add(r[2]);
-							}
+					}
+
+					const match2 = el.app_keywords.app_match(words.slice(0,words.length-1), res);
+					if (match2) {
+					for (const kw of el.app_keywords.app_keywords) {
+						const r = words2[words2.length - 1]?.exec(kw);
+						if (r && r[2]) {
+							kw_remainder.add(r[2]);
 						}
+					}
 					}
 				}
 
@@ -1276,7 +1296,9 @@
 				this.preview?.addEventListener(`preview`, this.on_preview);
 
 				const bar = this.querySelector(`app-bar`);
+				if (bar) {
 				bar.insertBefore(this.preview, bar.firstChild);
+				}
 
 				this.querySelector(`header`)?.addEventListener(`click`, this.on_click);
 
@@ -1289,7 +1311,7 @@
 				this.polyline = [];
 
 				this.querySelector(`header`)?.removeEventListener(`click`, this.on_click);
-				this.preview.removeEventListener(`preview`, this.on_preview);
+				this.preview?.removeEventListener(`preview`, this.on_preview);
 			}
 
 			on_click(e) {
@@ -2193,6 +2215,26 @@ p,
 
 		function enumerate(arr) {
 			return arr.map((v, i) => [i, v]);
+		}
+
+		function to_grid(lat, lon) {
+			let res_x = 512;
+			let res_y = 64;
+			let x_start = 51.761483;
+			let y_start = 5.585679;
+			let x_end = 52.077655;
+			let y_end = 6.146368;
+			let x_range = x_end - x_start;
+			let y_range = y_end - y_start;
+			let x_step = x_range / res_x;
+			let y_step = y_range / res_y;
+
+			let x = Math.round((lat) / x_step);
+			let y = Math.round((lon) / y_step);
+			console.log({x,y});
+			fetch(`static/grid/${x}-${y}.html`).then(x=>x.text()).then(x=>{
+				document.querySelector(`app-doc`).innerHTML = x;
+			});
 		}
 	</script>
 </body>
