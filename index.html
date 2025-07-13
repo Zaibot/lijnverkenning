@@ -660,7 +660,9 @@
 		<app-side>
 			<app-bar>
 				<app-search data-target="app-doc > app-trip-ref">
-					<input type="text" autocomplete="false" autofocus placeholder="Lijnen zoeken..." />
+					<input type="text" autocomplete="false" list="search-keywords" autofocus
+						placeholder="Lijnen zoeken..." />
+					<datalist id="search-keywords"></datalist>
 				</app-search>
 				<button type="button" id="prev">-1</button>
 				<span id="step"></span>
@@ -1130,17 +1132,18 @@
 			apply_search() {
 				const wildcard = (pattern) => {
 					if (Number(pattern)) {
-						return new RegExp(`(:?\\b${pattern}\\b)`);
+						return new RegExp(`(:?\\b${pattern})([0-9]*)\\b`, `g`);
 					}
-					return new RegExp(`(:?\\b${pattern})`, `gi`);
+					return new RegExp(`(:?\\b${pattern})([a-z]*)`, `gi`);
 				}
 
 				const value = this.app_input.value;
 				const words = value.split(/[\s,.:;]+/).filter(Boolean).map(wildcard);
 				const target = document.querySelectorAll(this.dataset.target);
 				const matches = new Set();
-				const kw_matches_all = new Set();document.createDocumentFragment
+				const kw_matches_all = new Set();
 				const kw_matches = new Set();
+				const kw_remainder = new Set();
 
 				for (const el of target) {
 					const pending = new Set(words);
@@ -1153,7 +1156,20 @@
 					if (match) {
 						matches.add(el);
 						el.app_keywords.textContent = [...res].join(`, `);
+						
+						for (const kw of el.app_keywords.app_keywords) {
+							const r = words[words.length - 1]?.exec(kw);
+							if (r && r[2]) {
+								kw_remainder.add(r[2]);
+							}
+						}
 					}
+				}
+
+				const skw = document.querySelector(`#search-keywords`);
+				skw.innerHTML = ``
+				for (const kw of [...kw_remainder].sort().slice(0, 25)) {
+					skw.appendChild(h(`option`, `${value}${kw}`));
 				}
 
 				const results = [...matches].map(x => x.dataset.shape);
