@@ -64,7 +64,7 @@
 			color: #fff;
 			box-shadow: none;
 			padding: 0.1rem 0.2rem;
-			max-width: 4rem;
+			max-width: 5rem;
 			overflow: hidden;
 			text-overflow: ellipsis;
 
@@ -93,16 +93,22 @@
 			display: none;
 		}
 
-		app-keyword {
-			display: none;
-			font-family: monospace;
-			color: #f04040;
-			font-size: 0.8rem;
-
-			&.app-search-match {
-				display: block;
-			}
+		app-keywords {
+			color: #a00000;
+			max-height: 15rem;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			margin: 0.2rem 0.4rem;
 		}
+
+
+		/*
+		app-trip-ref {
+			contain: content;
+			content-visibility: auto;
+			contain-intrinsic-height: auto 8rem;
+		}
+		*/
 
 		app-main {
 			display: grid;
@@ -146,8 +152,22 @@
 		app-trip {
 			&>header {
 				display: flex;
-				gap: 0.5rem;
+				gap: 0.4rem;
 				align-items: center;
+
+
+				&>app-name {
+					flex: 1 0 auto;
+
+					display: flex;
+					flex-direction: column;
+
+
+					&>app-sub-name {
+						font-size: 0.7rem;
+						color: #7f7fb0;
+					}
+				}
 			}
 
 			app-city {
@@ -197,8 +217,16 @@
 				gap: 0.5rem;
 				align-items: center;
 
-				app-name {
+				&>app-name {
 					flex: 1 0 auto;
+
+					display: flex;
+					flex-direction: column;
+
+					&>app-sub-name {
+						font-size: 0.7rem;
+						color: #7f7fb0;
+					}
 				}
 			}
 
@@ -207,14 +235,13 @@
 			}
 
 			app-trip-cell {
-				flex: 1 0 min-width;
 				display: flex;
-				flex-direction: row;
 				justify-items: flex-end;
 				align-items: center;
 				flex: 1 0 100%;
 				display: flex;
 				flex-direction: row;
+				gap: 0.5rem;
 
 				app-city-ref {
 					font-weight: inherit;
@@ -226,6 +253,13 @@
 				}
 			}
 
+
+			app-stop-ref {
+				display: flex;
+				flex-direction: row;
+				gap: 0.5rem;
+				align-items: center;
+			}
 
 		}
 
@@ -419,7 +453,7 @@
 			flex-direction: column;
 
 			&>header {
-				padding: 1.0rem;
+				padding: 0.5rem;
 				border-radius: 0.5rem;
 				color: #e0e0f0;
 				background-color: #202050f0;
@@ -440,6 +474,7 @@
 					min-width: 0;
 					text-overflow: ellipsis;
 				}
+
 			}
 		}
 
@@ -465,6 +500,22 @@
 		}
 
 
+		app-platform {
+			background-color: #cdcdeb;
+			color: #404080;
+			padding: 0.2rem 0.4rem;
+			font-size: 0.8rem;
+			font-weight: 600;
+		}
+
+
+		app-transfer {
+			color: #404080;
+			padding: 0.3rem 0.6rem;
+			font-size: 0.8rem;
+		}
+
+
 		app-line {
 			font-weight: bold;
 			display: flex;
@@ -473,6 +524,8 @@
 			min-width: 2rem;
 			padding: 0.2rem;
 			color: #e0e0f0;
+			background-color: var(--line-color);
+			border-radius: 0.2rem;
 		}
 
 		app-side {
@@ -631,13 +684,19 @@
 		const POINT_SIZE = 4;
 		const POINT_SIZE_IMPORTANT = 6;
 
+		class AppBase extends HTMLElement {
+			get app_latlon() {
+				return [parseFloat(this.dataset.lat), parseFloat(this.dataset.lon)];
+			}
+
+			get app_main() {
+				return document.querySelector(`app-main`);
+			}
+		}
+
 		class AppMain extends HTMLElement {
 			static get doc() {
 				return document.querySelector(`app-main`);
-			}
-
-			get app_map() {
-				return this.querySelector(`app-map`);
 			}
 
 			constructor() {
@@ -651,6 +710,7 @@
 			}
 
 			connectedCallback() {
+				this.app_map = this.querySelector(`app-map`);
 				this.on_resize();
 				window.addEventListener(`resize`, this.on_resize);
 				this.querySelector(`#prev`).addEventListener(`click`, this.prev_shape);
@@ -732,11 +792,16 @@
 		}
 		window.customElements.define(`app-main`, AppMain);
 
+		class AppLine extends HTMLElement {
+			connectedCallback() {
+				this.style.setProperty(`--line-color`, this.dataset.color);
+			}
+		}
+
 		class AppGoto extends HTMLElement {
 			constructor() {
 				super();
 				this.on_click = this.on_click.bind(this);
-
 			}
 
 			connectedCallback() {
@@ -756,6 +821,29 @@
 		}
 		window.customElements.define(`app-goto`, AppGoto);
 
+		class AppKeywords extends HTMLElement {
+			connectedCallback() {
+				this.app_keywords = new Set(this.dataset.values.split(`;`));
+			}
+
+			app_match(fn, res) {
+				const fns = new Set(fn);
+				for (const k of this.app_keywords) {
+					for (const f of fn) {
+						if (f.test(k)) {
+							fns.delete(f);
+							res.add(k);
+						}
+					}
+				}
+				if (fns.size === 0) {
+					return res;
+				}
+
+
+			}
+		}
+		window.customElements.define(`app-keywords`, AppKeywords);
 
 		class AppPreview extends HTMLElement {
 			static OPEN = 1;
@@ -885,8 +973,46 @@
 		}
 		window.customElements.define(`app-map`, AppMap);
 
+
+		const redraw_queue = new Set();
+		let redraw_queue_pending = null;
+		function queue_redraw(el) {
+			redraw_queue.add(el);
+			if (redraw_queue_pending) {
+				return;
+			}
+			redraw_queue_pending = 1;
+			requestAnimationFrame(redraw_queue_worker);
+		}
+		function redraw_queue_worker() {
+			redraw_queue_pending = 0;
+			for (const el of redraw_queue) {
+				el.redraw();
+			}
+			redraw_queue.clear();
+		}
+		
+
 		class AppFav extends HTMLElement {
 			static observedAttributes = ['data-key'];
+			static cache = null;
+
+			static get app_selected() {
+				if (AppFav.cache) {
+				return AppFav.cache;
+				}
+
+				const cache = new Set();
+				const prefix = `fav-selected-`;
+				const prefix_len = prefix.length;
+				for (const k in window.localStorage) {
+					if (k.startsWith(k) && window.localStorage.getItem(k) === `y`) {
+						cache.add(k.substring(prefix_len));
+					}
+				}
+				AppFav.cache = cache;
+				return cache;
+			}
 
 			get app_selected() {
 				const key = this.dataset.key;
@@ -894,9 +1020,7 @@
 					return false;
 				}
 
-				const value = window.localStorage.getItem(`fav-selected-${key}`);
-
-				return value === `y`;
+				return AppFav.app_selected.has(key);
 			}
 
 			set app_selected(value) {
@@ -906,6 +1030,7 @@
 				}
 
 				window.localStorage.setItem(`fav-selected-${key}`, value ? `y` : `n`);
+				AppFav.cache = null;
 			}
 
 			static is_selected(key) {
@@ -919,7 +1044,7 @@
 
 			connectedCallback() {
 				this.addEventListener(`click`, this.on_click);
-				this.redraw();
+				queue_redraw(this);
 			}
 
 			disconnectedCallback() {
@@ -927,13 +1052,13 @@
 			}
 
 			redraw() {
-				this.tabIndex = 0;
 				this.classList.toggle(`selected`, this.app_selected);
 				this.textContent = this.app_selected ? `+` : `-`;
 			}
 
+
 			attributeChangedCallback(name, oldValue, newValue) {
-				this.redraw();
+				queue_redraw(this);
 			}
 
 			on_click(e) {
@@ -943,7 +1068,7 @@
 				this.app_selected = !this.app_selected;
 
 				for (const el of document.querySelectorAll(`app-fav,app-stop,app-stop-travel`)) {
-					el.redraw();
+					queue_redraw(el);
 				}
 			}
 		}
@@ -993,35 +1118,35 @@
 					if (Number(pattern)) {
 						return new RegExp(`(:?\\b${pattern}\\b)`);
 					}
-					return new RegExp(`(:?${pattern})`, `i`);
+					return new RegExp(`(:?\\b${pattern})`, `gi`);
 				}
 
 				const value = this.app_input.value;
 				const words = value.split(/[\s,.:;]+/).filter(Boolean).map(wildcard);
 				const target = document.querySelectorAll(this.dataset.target);
+				const matches = new Set();
+				const kw_matches_all = new Set();document.createDocumentFragment
+				const kw_matches = new Set();
 
 				for (const el of target) {
-					const sources = el.querySelectorAll(`app-name,app-line,app-city,app-city-ref,app-stop,app-stop-ref,app-keyword`);
 					const pending = new Set(words);
-					for (const word of pending) {
-						for (const s of sources) {
-							const match = s.textContent.match(word);
-							if (match) {
-								pending.delete(word);
-							}
-							s.classList.toggle(`app-search-match`, !!value && match);
-						}
-					}
 
-					const match = pending.size === 0;
-					el.classList.toggle(`app-search-visible`, match);
+					const res = new Set();
+					const match = el.app_keywords.app_match(words, res);
+
+					el.classList.toggle(`app-search-visible`, !!match);
 					el.classList.toggle(`app-search-hidden`, !match);
+					if (match) {
+						matches.add(el);
+						el.app_keywords.textContent = [...res].join(`, `);
+					}
 				}
 
-				const results = [...target].filter(x => x.classList.contains(`app-search-visible`)).map(x => x.dataset.shape);
+				const results = [...matches].map(x => x.dataset.shape);
 				if (results.length > 0) {
 					AppMain.doc.store_shapes(results);
 				}
+
 			}
 		}
 		window.customElements.define(`app-search`, AppSearch);
@@ -1100,42 +1225,32 @@
 				this.on_click = this.on_click.bind(this);
 				this.on_hover = this.on_hover.bind(this);
 				this.on_leave = this.on_leave.bind(this);
+				this.on_preview = this.on_preview.bind(this);
 			}
 
 			get app_query_stop_refs() {
 				return this.querySelectorAll(`app-stop-ref`);
 			}
+			
+			on_preview(e) {
+				if (AppPreview.is_close(e.detail)) {
+					this.on_leave();
+					return;
+				}
+				
+				this.on_hover();
+			}
 
 			connectedCallback() {
-				this.preview = h(`app-preview`);
-				this.preview.addEventListener(`preview`, (e) => {
-					if (AppPreview.is_close(e.detail)) {
-						this.on_leave();
-						return;
-					}
+				this.preview = this.querySelector(`app-preview`);
+				this.preview?.addEventListener(`preview`, this.on_preview);
 
-					this.on_hover();
-				});
-				const before = this.querySelector(`header`);
-
-
-				const group = h(`app-list`);
-				const wrap = h(`app-bar`, [
-					this.preview,
-					group,
-				])
-
-				for (let cur = before.nextSibling; cur;) {
-					const n = cur.nextSibling;
-					group.appendChild(cur);
-					cur = n;
-				}
-
-				this.appendChild(wrap);
+				const bar = this.querySelector(`app-bar`);
+				bar.insertBefore(this.preview, bar.firstChild);
 
 				this.querySelector(`header`)?.addEventListener(`click`, this.on_click);
-				this.tabIndex = 0;
 
+				this.app_keywords = this.querySelector(`app-keywords`);
 			}
 
 			disconnectedCallback() {
@@ -1144,6 +1259,7 @@
 				this.polyline = [];
 
 				this.querySelector(`header`)?.removeEventListener(`click`, this.on_click);
+				this.preview.removeEventListener(`preview`, this.on_preview);
 			}
 
 			on_click(e) {
@@ -1169,11 +1285,13 @@
 
 				this.polyline?.forEach(x => x.removeFrom(map));
 
-				this.polyline = [
-					L.polyline(
+					const p = L.polyline(
 						stops1,
 						{"weight": 3, "color": "#808080c0"},
-					),
+					);
+					p.addTo(map);
+				this.polyline = [
+p,
 				];
 				const bounds = this.polyline[0].getBounds();
 				if (bounds.isValid()) {
@@ -1195,7 +1313,6 @@
 				}
 
 
-				this.polyline?.forEach(x => x.addTo(map));
 			}
 		}
 		window.customElements.define(`app-trip-ref`, AppTripRef);
@@ -1244,6 +1361,11 @@
 			}
 		}
 		window.customElements.define(`app-city`, AppCity);
+
+
+		class AppStopRef extends AppBase {
+		}
+		window.customElements.define(`app-stop-ref`, AppStopRef);
 
 		class AppStopTravel extends HTMLElement {
 			static observedAttributes = [`data-start`, `data-end`];
@@ -1342,7 +1464,7 @@
 				this.addEventListener(`pointerdown`, this.on_pointerdown);
 				this.addEventListener(`pointerup`, this.on_out);
 				this._button.addEventListener(`click`, this.on_click_button);
-				this.redraw();
+					queue_redraw(this);
 			}
 
 			disconnectedCallback() {
@@ -1419,7 +1541,7 @@
 				const key = this.app_storagekey;
 				const text = key && localStorage.getItem(key)?.trim();
 
-				this.marker.setRadius(8);
+				this.marker?.setRadius(8);
 				this.classList.add(`focus`);
 			}
 
@@ -1460,7 +1582,7 @@
 			}
 
 			on_closed() {
-				this.redraw();
+					queue_redraw(this);
 				this.prev_stop?.on_out?.();
 				this.next_stop?.on_out?.();
 				this.parentElement?.parentElement?.app_fit?.();
@@ -1504,7 +1626,7 @@
 
 			on_leave(e) {
 				for (const el of document.querySelectorAll(`app-stop-travel`)) {
-					el.redraw();
+					queue_redraw(el);
 				}
 			}
 
@@ -1610,7 +1732,7 @@
 				const stops1 = [...this.app_query_stops()].map(x => x.app_latlon);
 				const stops = [...this.app_query_stops()].map(x => [parseFloat(x.dataset.lat),
 				parseFloat(x.dataset.lon), x.dataset.id, x.querySelector(`app-name`).textContent,
-				x.querySelector(`app-transfer`).textContent]);
+				x.querySelector(`app-transfer`)?.textContent??``].filter(Boolean));
 
 				this.polyline?.forEach(x => x.removeFrom(map));
 				const shape = this.app_shape;
@@ -1725,70 +1847,6 @@
 		window.customElements.define(`app-trip`, AppTrip);
 
 
-		class AppStopRef extends HTMLElement {
-			constructor() {
-				super();
-
-				this.on_hover = this.on_hover.bind(this);
-				this.on_out = this.on_out.bind(this);
-			}
-
-			get app_latlon() {
-				return [parseFloat(this.dataset.lat), parseFloat(this.dataset.lon)];
-			}
-
-			connectedCallback() {
-				this.addEventListener(`pointerover`, this.on_hover);
-				this.addEventListener(`pointerout`, this.on_out);
-			}
-
-			disconnectedCallback() {
-				const map = AppMain.doc.app_map.osm;
-				this.marker?.removeFrom(map);
-				this.removeEventListener(`pointerover`, this.on_hover);
-				this.removeEventListener(`pointerout`, this.on_out);
-			}
-
-			redraw() {
-
-				const key = this.dataset.id;
-				const lat = this.dataset.lat;
-				const lon = this.dataset.lon;
-				const name = this.querySelector(`app-name`)?.textContent ?? `?`;
-				const transfer = this.querySelector(`app-transfer`)?.textContent ?? `?`;
-
-				const map = AppMain.doc.app_map.osm;
-
-				this.marker?.removeFrom(map);
-
-				const is_fav = AppFav.is_selected(`stop-${key}`);
-
-				this.tabIndex = 0;
-				this.marker = L.circleMarker([lat, lon], {
-					radius: is_fav ? POINT_SIZE_IMPORTANT : POINT_SIZE, color: is_fav ?
-						`#ff2020c0` : `#2020ff80`
-				});
-				this.marker.addTo(map);
-				this.marker.bindTooltip(`${name} (${transfer})`);
-				if (is_fav) {
-					this.marker.openTooltip();
-				}
-			}
-
-			on_hover() {
-				this.redraw();
-			}
-
-			on_out() {
-				const map = AppMain.doc.app_map.osm;
-				this.marker?.removeFrom(map);
-
-			}
-		}
-		window.customElements.define(`app-stop-ref`, AppStopRef);
-
-
-
 		class AppStop extends HTMLElement {
 			constructor() {
 				super();
@@ -1815,7 +1873,7 @@
 
 				//this.appendChild(this.goto_stop);
 
-				this.redraw();
+					queue_redraw(this);
 				this.addEventListener(`pointerdown`, this.on_click);
 				this.addEventListener(`pointerover`, this.on_hover);
 				this.addEventListener(`pointerout`, this.on_out);
@@ -1838,7 +1896,6 @@
 
 				const is_fav = AppFav.is_selected(`stop-${key}`);
 
-				this.tabIndex = 0;
 
 				/*
 				this.marker = L.circleMarker([lat, lon], {
@@ -1895,7 +1952,7 @@
 			}
 
 			on_hover() {
-				this.marker.setRadius(8);
+				this.marker?.setRadius(8);
 				this.classList.add(`focus`);
 			}
 
@@ -1984,7 +2041,6 @@
 
 				const is_fav = AppFav.is_selected(`sign-${key}`);
 
-				this.tabIndex = 0;
 				this.marker = L.circleMarker(this.app_latlon, {
 					radius: POINT_SIZE,
 					color: `#102080`,
