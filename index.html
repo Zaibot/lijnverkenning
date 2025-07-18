@@ -175,6 +175,7 @@
 				position: sticky;
 				top: 3rem;
 				background-color: #f0f0ff;
+				z-index: 0;
 			}
 
 			app-stop {
@@ -283,7 +284,7 @@
 
 		app-city {
 			font-weight: bold;
-			padding: 0.2rem;
+			padding: 0.6rem 0.2rem;
 			color: #40408080;
 			display: flex;
 			flex-direction: row;
@@ -659,6 +660,7 @@
 	<app-main>
 		<app-side>
 			<app-bar>
+				<button type="button" id="list">&lt;</button>
 				<app-search data-target="app-doc > app-trip-ref">
 					<input type="text" autocomplete="false" list="search-keywords" autofocus
 						placeholder="Lijnen zoeken..." />
@@ -688,20 +690,91 @@
 		const POINT_SIZE_IMPORTANT = 6;
 
 		class AppBase extends HTMLElement {
+			static _cache = new Map();
+
 			get app_latlon() {
-				return [parseFloat(this.dataset.lat), parseFloat(this.dataset.lon)];
+				const lat = this.dataset.lat;
+				const lon = this.dataset.lon;
+
+				return this.memoize(`latlon`, lat + lon, (_) => {
+					return lat && lon && [parseFloat(lat), parseFloat(lon)] || null;
+				});
 			}
 
 			get app_main() {
-				return document.querySelector(`app-main`);
+				return (this._main ??= document.querySelector(`app-main`));
+			}
+
+			get app_doc() {
+				return (this._doc ??= document.querySelector(`app-doc`));
+			}
+
+			get app_map() {
+				return (this._map ??= document.querySelector(`app-map`));
+			}
+
+			get app_shape() {
+				return this.memoize(`shape`, this.dataset.shape, (shape) => {
+					return shape.split(`;`).map(x => {
+						const [lat, lon] = x.split(`,`);
+						return [parseFloat(lat), parseFloat(lon)];
+					});
+				});
+			}
+
+			get app_query_stop_refs() {
+				return this.querySelectorAll(`app-stop-ref`);
+			}
+			
+			get app_start() {
+				return this.dataset.start;
+			}
+
+			get app_end() {
+				return this.dataset.end;
+			}
+
+			get app_query_stops() {
+				return this.querySelectorAll(`app-stop`);
+			}
+
+			get my_header() {
+				return this.my_memoize(`header`, this, (_) => this.querySelector(`& > header`));
+			}
+
+			my_memoize(key, input, fn) {
+				const _cache = (this._cache ??= new Map());
+				const cur = _cache.get(key);
+				if (cur && cur[0] === input) {
+					return cur[1];
+				}
+
+				const upd = fn(input);
+				_cache.set(key, [input, upd]);
+				return upd;
+			}
+
+
+			memoize(key, input, fn) {
+				const cur = AppBase._cache.get(key);
+				if (cur && cur[0] === input) {
+					return cur[1];
+				}
+
+				const upd = fn(input);
+				AppBase._cache.set(key, [input, upd]);
+				return upd;
+			}
+
+			queue_redraw() {
+				queue_redraw(this);
+			}
+
+			redraw() {
 			}
 		}
 
-		class AppMain extends HTMLElement {
-			static get doc() {
-				return document.querySelector(`app-main`);
-			}
-
+		class AppMain extends AppBase {
 			constructor() {
 				super();
 				this.shapes = [];
@@ -709,15 +782,17 @@
 
 				this.next_shape = this.next_shape.bind(this)
 				this.prev_shape = this.prev_shape.bind(this)
+				this.close_shape = this.close_shape.bind(this)
 				this.on_resize = this.on_resize.bind(this)
 			}
 
 			connectedCallback() {
-				this.app_map = this.querySelector(`app-map`);
 				this.on_resize();
 				window.addEventListener(`resize`, this.on_resize);
 				this.querySelector(`#prev`).addEventListener(`click`, this.prev_shape);
 				this.querySelector(`#next`).addEventListener(`click`, this.next_shape);
+				this.querySelector(`#list`).addEventListener(`click`, this.close_shape);
+
 				window.addEventListener(`popstate`, (e) => {
 					const d = e.state;
 
@@ -727,6 +802,17 @@
 						this.close_shape();
 					}
 				});
+
+				const hash = location.hash;
+				if (hash) {
+					const obj = Object.fromEntries(hash.substring(1).split(`&`).map(x=>{
+						return x.split(`=`);
+					}));
+
+					if (obj?.shape) {
+						this.open_shape(obj.shape);
+					}
+				}
 			}
 
 
@@ -758,7 +844,7 @@
 				}
 
 				const src = `static/trips/${shape}.html`;
-				const doc = this.querySelector(`app-doc`);
+				const doc = this.app_doc;
 
 				if (this.selected_shape !== shape || doc.dataset.src !== src) {
 					this.selected_shape = shape;
@@ -774,7 +860,7 @@
 			}
 
 			close_shape() {
-				const doc = this.querySelector(`app-doc`);
+				const doc = this.app_doc;
 				const src = `static/trip-ref.html`;
 				if (this.selected_shape || doc.dataset.src !== src) {
 					this.selected_shape = null;
@@ -809,13 +895,13 @@
 		}
 		window.customElements.define(`app-main`, AppMain);
 
-		class AppLine extends HTMLElement {
+		class AppLine extends AppBase {
 			connectedCallback() {
 				this.style.setProperty(`--line-color`, this.dataset.color);
 			}
 		}
 
-		class AppGoto extends HTMLElement {
+		class AppGoto extends AppBase {
 			constructor() {
 				super();
 				this.on_click = this.on_click.bind(this);
@@ -833,14 +919,14 @@
 				e.preventDefault();
 				e.stopImmediatePropagation();
 
-				AppMain.doc.querySelector(`app-doc`).dataset.src = this.dataset.src;
+				this.app_doc.dataset.src = this.dataset.src;
 			}
 		}
 		window.customElements.define(`app-goto`, AppGoto);
 
-		class AppKeywords extends HTMLElement {
-			connectedCallback() {
-				this.app_keywords = new Set(this.dataset.values.split(`;`));
+		class AppKeywords extends AppBase {
+			get app_keywords() {
+				return this.memoize(`keywords`, this.dataset.values, (values) => new Set(values.split(`;`)));
 			}
 
 			app_match(fn, res) {
@@ -862,7 +948,7 @@
 		}
 		window.customElements.define(`app-keywords`, AppKeywords);
 
-		class AppPreview extends HTMLElement {
+		class AppPreview extends AppBase {
 			static OPEN = 1;
 			static AUTO_CLOSE = 2;
 			static MANUAL_CLOSE = 3;
@@ -879,10 +965,13 @@
 				return detail === AppPreview.AUTO_CLOSE || detail === AppPreview.MANUAL_CLOSE;
 			}
 
+			get app_active() {
+				return this.classList.contains(`active`);
+			}
+
 			constructor() {
 				super();
 				this.on_click = this.on_click.bind(this);
-
 			}
 
 			connectedCallback() {
@@ -890,10 +979,7 @@
 			}
 
 			disconnectedCallback() {
-				if (this.classList.contains(`active`)) {
-					this.classList.remove(`active`);
-					this.emit(AppPreview.AUTO_CLOSE);
-				}
+				this.cancel();
 				this.removeEventListener(`click`, this.on_click);
 			}
 
@@ -901,11 +987,10 @@
 				e.preventDefault();
 				e.stopImmediatePropagation();
 
-				const should = !this.classList.contains(`active`);
+				const should = !this.app_active;
 
 				if (!should) {
-					this.classList.remove(`active`);
-					this.emit(AppPreview.MANUAL_CLOSE);
+					this.close();
 				}
 
 				for (const others of document.querySelectorAll(`app-preview.active`)) {
@@ -913,16 +998,32 @@
 				}
 
 				if (should) {
-					this.classList.add(`active`);
-					this.emit(AppPreview.OPEN);
+					this.open();
 				}
 			}
 
-			cancel() {
-				if (this.classList.contains(`active`)) {
-					this.classList.remove(`active`);
-					this.emit(AppPreview.AUTO_CLOSE);
+			close() {
+				if (this.app_active) {
+					return;
 				}
+				this.classList.remove(`active`);
+				this.emit(AppPreview.MANUAL_CLOSE);
+			}
+
+			cancel() {
+				if (!this.app_active) {
+					return;
+				}
+				this.classList.remove(`active`);
+				this.emit(AppPreview.AUTO_CLOSE);
+			}
+
+			open() {
+				if (this.app_active) {
+					return;
+				}
+				this.classList.add(`active`);
+				this.emit(AppPreview.OPEN);
 			}
 
 			emit(detail) {
@@ -936,12 +1037,13 @@
 			iconSize: [24, 24],
 			iconAnchor: [12, 24],
 		});
-		class AppMap extends HTMLElement {
+		class AppMap extends AppBase {
 			constructor() {
 				super();
 
 				this.on_locationerror = this.on_locationerror.bind(this);
 				this.on_locationfound = this.on_locationfound.bind(this);
+				this.on_moveend = this.on_moveend.bind(this);
 
 				this.osm = L.map(this, {
 					doubleClickZoom: false,
@@ -951,10 +1053,11 @@
 			connectedCallback() {
 				this.osm.on(`locationerror`, this.on_locationerror);
 				this.osm.on(`locationfound`, this.on_locationfound);
+				this.osm.on(`moveend`, this.on_moveend);
 
 				this.osm.setView([51.981776, 5.902942], 12);
 
-				this.tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+				this.tiles = L.tileLayer('https://tile.memomaps.de/tilegen/{z}/{x}/{y}.png', {
 					attribution: '&copy; <a href=" https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
 				});
 				this.tiles.addTo(this.osm);
@@ -967,6 +1070,7 @@
 			disconnectedCallback() {
 				this.osm.off(`locationerror`, this.on_locationerror);
 				this.osm.off(`locationfound`, this.on_locationfound);
+				this.osm.off(`moveend`, this.on_moveend);
 			}
 
 			on_locationerror(e) {
@@ -978,6 +1082,12 @@
 
 				to_grid(e.latlng.lat, e.latlng.lng);
 				this.osm.flyTo(e.latlng, 15, {animate: true, duration: 1});
+			}
+
+			on_moveend() {
+				const latlng = this.osm.getCenter();
+				return;
+				to_grid(latlng.lat, latlng.lng);
 			}
 
 			locate() {
@@ -1020,7 +1130,7 @@
 		}
 		
 
-		class AppFav extends HTMLElement {
+		class AppFav extends AppBase {
 			static observedAttributes = ['data-key'];
 			static cache = null;
 
@@ -1101,7 +1211,7 @@
 		}
 		window.customElements.define(`app-fav`, AppFav);
 
-		class AppSearch extends HTMLElement {
+		class AppSearch extends AppBase {
 			static observedAttributes = [`data-target`];
 
 			constructor() {
@@ -1109,6 +1219,11 @@
 
 				this.on_change = this.on_change.bind(this);
 			}
+
+			get app_listbtn() {
+				return this.querySelector(`#list`);
+			}
+
 
 			get app_input() {
 				return this.querySelector(`input`);
@@ -1124,6 +1239,7 @@
 
 			connectedCallback() {
 				this.app_input.value = this.stored_input;
+
 				this.app_input.addEventListener(`change`, this.on_change);
 				this.app_input.addEventListener(`input`, this.on_change);
 			}
@@ -1135,7 +1251,7 @@
 			}
 
 			on_change(e) {
-				AppMain.doc.close_shape();
+				this.app_main.close_shape();
 				this.stored_input = this.app_input.value;
 				this.apply_search();
 			}
@@ -1194,7 +1310,7 @@
 
 				const results = [...matches].map(x => x.dataset.shape);
 				if (results.length > 0) {
-					AppMain.doc.store_shapes(results);
+					this.app_main.store_shapes(results);
 				}
 
 			}
@@ -1203,7 +1319,7 @@
 
 
 
-		class AppDoc extends HTMLElement {
+		class AppDoc extends AppBase {
 			static observedAttributes = [`data-src`];
 
 			constructor() {
@@ -1255,7 +1371,7 @@
 					s.apply_search?.();
 				}
 
-				const last = AppMain.doc.last_shape;
+				const last = this.app_main.last_shape;
 				if (last) {
 					const match = this.querySelector(`app-trip-ref[data-shape=${JSON.stringify(last)}]`);
 					if (match) {
@@ -1264,12 +1380,12 @@
 					}
 				}
 
-				AppMain.doc.app_map.osm.invalidateSize();
+				this.app_map.osm.invalidateSize();
 			}
 		}
 		window.customElements.define(`app-doc`, AppDoc);
 
-		class AppTripRef extends HTMLElement {
+		class AppTripRef extends AppBase {
 			constructor() {
 				super();
 				this.on_click = this.on_click.bind(this);
@@ -1278,10 +1394,7 @@
 				this.on_preview = this.on_preview.bind(this);
 			}
 
-			get app_query_stop_refs() {
-				return this.querySelectorAll(`app-stop-ref`);
-			}
-			
+		
 			on_preview(e) {
 				if (AppPreview.is_close(e.detail)) {
 					this.on_leave();
@@ -1292,25 +1405,25 @@
 			}
 
 			connectedCallback() {
-				this.preview = this.querySelector(`app-preview`);
+				this.preview = this.querySelector(`& > app-bar > app-preview`);
 				this.preview?.addEventListener(`preview`, this.on_preview);
 
-				const bar = this.querySelector(`app-bar`);
+				const bar = this.querySelector(`& > app-bar`);
 				if (bar) {
 				bar.insertBefore(this.preview, bar.firstChild);
 				}
 
-				this.querySelector(`header`)?.addEventListener(`click`, this.on_click);
+				this.my_header.addEventListener(`click`, this.on_click);
 
-				this.app_keywords = this.querySelector(`app-keywords`);
+				this.app_keywords = this.querySelector(`& > app-keywords`);
 			}
 
 			disconnectedCallback() {
-				const map = AppMain.doc.app_map.osm;
+				const map = this.app_map.osm;
 				this.polyline?.forEach(x => x.removeFrom(map));
 				this.polyline = [];
 
-				this.querySelector(`header`)?.removeEventListener(`click`, this.on_click);
+				this.my_header?.removeEventListener(`click`, this.on_click);
 				this.preview?.removeEventListener(`preview`, this.on_preview);
 			}
 
@@ -1318,21 +1431,20 @@
 				e.preventDefault();
 				e.stopImmediatePropagation();
 
-				AppMain.doc.goto_open_shape(this.dataset.shape);
+				this.app_main.goto_open_shape(this.dataset.shape);
 			}
 
 			on_leave() {
-				const map = AppMain.doc.app_map.osm;
+				const map = this.app_map.osm;
 				this.polyline?.forEach(x => x.removeFrom(map));
 				this.polyline = [];
 
 			}
 
 			on_hover() {
-				const map = AppMain.doc.app_map.osm;
+				const map = this.app_map.osm;
 				const stops1 = [...this.app_query_stop_refs].map(x => x.app_latlon);
-				const stops = [...this.app_query_stop_refs].map(x => [parseFloat(x.dataset.lat),
-				parseFloat(x.dataset.lon), x.dataset.id, x.querySelector(`app-name`).textContent,
+				const stops = [...this.app_query_stop_refs].map(x => [...x.app_latlon, x.dataset.id, x.querySelector(`app-name`).textContent,
 				]);
 
 				this.polyline?.forEach(x => x.removeFrom(map));
@@ -1369,7 +1481,7 @@ p,
 		}
 		window.customElements.define(`app-trip-ref`, AppTripRef);
 
-		class AppCity extends HTMLElement {
+		class AppCity extends AppBase {
 			constructor() {
 				super();
 
@@ -1392,12 +1504,11 @@ p,
 			}
 
 			on_preview(e) {
-
-				if (e.detail === AppPreview.MANUAL_CLOSE) {
+				if (AppPreview.is_close(e.detail)) {
 					this.parentElement?.app_fit?.();
 					return;
 				}
-				const map = AppMain.doc.app_map.osm;
+				const map = this.app_map.osm;
 
 				const res = [];
 				for (let cur = this.nextElementSibling; cur.nextElementSibling?.tagName === `APP-STOP` || cur.nextElementSibling?.tagName === `APP-STOP-TRAVEL`; cur = cur.nextElementSibling) {
@@ -1419,17 +1530,8 @@ p,
 		}
 		window.customElements.define(`app-stop-ref`, AppStopRef);
 
-		class AppStopTravel extends HTMLElement {
+		class AppStopTravel extends AppBase {
 			static observedAttributes = [`data-start`, `data-end`];
-
-			get app_start() {
-				return this.dataset.start;
-			}
-
-			get app_end() {
-				return this.dataset.end;
-			}
-
 			get app_storagekey() {
 				if (!this.app_start) {
 					return;
@@ -1438,10 +1540,6 @@ p,
 					return;
 				}
 				return `stop-travel-${this.app_start}-${this.app_end}`;
-			}
-
-			get app_latlon() {
-				return [parseFloat(this.dataset.lat), parseFloat(this.dataset.lon)];
 			}
 
 			constructor() {
@@ -1457,31 +1555,10 @@ p,
 				this.on_leave = this.on_leave.bind(this);
 				this.on_closed = this.on_closed.bind(this);
 
+
 				this._button = h(`button`, `notitie aanmaken`);
 				this._button.addEventListener(`pointerover`, this.on_hover);
 				this._button.addEventListener(`pointerout`, this.on_out);
-				const signs = h(`div`, [...this.querySelectorAll(`app-sign`)]);
-				const ta = h(`textarea`, ``);
-				ta.autofocus = true;
-				this._header = h(`header`, ``);
-				this._form = h(`form`, [
-					this._header,
-					signs,
-					ta,
-					h(`button`, `OK`),
-				]);
-				this._form.method = `dialog`;
-				this._form.addEventListener(`submit`, () => {
-					const text = this._form.querySelector(`textarea`).value;
-					const key = this.app_storagekey;
-					localStorage.setItem(key, text);
-
-					this.on_closed();
-				});
-				this._dialog = h(`dialog`, [this._form]);
-				this._dialog.addEventListener(`cancel`, this.on_closed);
-				this._dialog.addEventListener(`close`, this.on_closed);
-
 				this.appendChild(this._button);
 
 				this.preview = h(`app-preview`);
@@ -1512,22 +1589,51 @@ p,
 				this.appendChild(this.preview);
 			}
 
+			get_dialog() {
+				if (this._dialog) {
+					return this._dialog;
+				}
+				const signs = h(`div`, [...this.querySelectorAll(`app-sign`)]);
+				const ta = h(`textarea`, ``);
+				ta.autofocus = true;
+				this._header = h(`header`, ``);
+				this._form = h(`form`, [
+					this._header,
+					signs,
+					ta,
+					h(`button`, `OK`),
+				]);
+				this._form.method = `dialog`;
+				this._form.addEventListener(`submit`, () => {
+					const text = this._form.querySelector(`textarea`).value;
+					const key = this.app_storagekey;
+					localStorage.setItem(key, text);
+
+					this.on_closed();
+				});
+				this._dialog = h(`dialog`, [this._form]);
+				this._dialog.addEventListener(`cancel`, this.on_closed);
+				this._dialog.addEventListener(`close`, this.on_closed);
+
+
+			}
+
 			connectedCallback() {
 				this.addEventListener(`pointerdown`, this.on_pointerdown);
 				this.addEventListener(`pointerup`, this.on_out);
 				this._button.addEventListener(`click`, this.on_click_button);
-					queue_redraw(this);
+				this.queue_redraw();
 			}
 
 			disconnectedCallback() {
 				this.removeEventListener(`pointerdown`, this.on_pointerdown);
 				this.removeEventListener(`pointerup`, this.on_out);
 					this._button.removeEventListener(`click`, this.on_click_button);
-				if (this._dialog.parentElement) {
+				if (this._dialog?.parentElement) {
 					document.body.removeChild(this._dialog);
 				}
 
-				const map = AppMain.doc.app_map.osm;
+				const map = this.app_map.osm;
 				this.marker?.removeFrom(map);
 			}
 
@@ -1541,7 +1647,7 @@ p,
 					this._button.textContent = `notitie aanmaken`;
 				}
 
-				const map = AppMain.doc.app_map.osm;
+				const map = this.app_map.osm;
 
 				this.marker?.removeFrom(map);
 
@@ -1557,7 +1663,7 @@ p,
 				this.marker.on(`dblclick`, this.on_click_tooltip);
 				this.marker.on(`mouseover`, this.on_hover)
 				this.marker.on(`mouseout`, this.on_out)
-				this.marker.bindTooltip(`${text ?? `notitie aanmaken`}`)
+				this.marker.bindTooltip(`${text || `notitie aanmaken`}`)
 				this.marker.getTooltip().on(`click`, this.on_click_tooltip);
 				if (text) {
 					this.marker.openTooltip();
@@ -1565,7 +1671,7 @@ p,
 			}
 
 			on_pointerdown() {
-				const map = AppMain.doc.app_map.osm;
+				const map = this.app_map.osm;
 
 				const zoom = map.getZoom();
 				const minZoom = 12;
@@ -1617,6 +1723,7 @@ p,
 			}
 
 			app_open() {
+				const dialog = this.get_dialog();
 				const prev = this.prev_stop?.querySelector(`app-name`)?.textContent ?? `???`;
 				const next = this.next_stop?.querySelector(`app-name`)?.textContent ?? `???`;
 				this._header.textContent = `${prev} -> ${next}`;
@@ -1678,7 +1785,7 @@ p,
 
 			on_leave(e) {
 				for (const el of document.querySelectorAll(`app-stop-travel`)) {
-					queue_redraw(el);
+					el.queue_redraw();
 				}
 			}
 
@@ -1713,7 +1820,7 @@ p,
 			}
 
 			app_fit() {
-				const map = AppMain.doc.app_map.osm;
+				const map = this.app_map.osm;
 				const prev = this.prev_stop;
 				if (!prev) {return;}
 				const next = this.next_stop;
@@ -1747,7 +1854,7 @@ p,
 		}
 		window.customElements.define(`app-stop-travel`, AppStopTravel);
 
-		class AppTrip extends HTMLElement {
+		class AppTrip extends AppBase {
 			constructor() {
 				super();
 				this.on_hover = this.on_hover.bind(this);
@@ -1756,35 +1863,11 @@ p,
 				this.on_scroll = this.on_scroll.bind(this);
 			}
 
-			get app_shape() {
-				return this.dataset.shape.split(`;`).map(x => {
-					const [lat, lon] = x.split(`,`);
-					return [parseFloat(lat), parseFloat(lon)];
-				});
-			}
-
-			app_query_stops() {
-				return this.querySelectorAll(`app-stop`);
-			}
-
 			connectedCallback() {
 				this._scrollContainer = this.parentElement;
-				this.addEventListener(`mouseenter`, this.on_hover);
-				this.addEventListener(`mouseleave`, this.on_leave);
 				this._scrollContainer.addEventListener(`scroll`, this.on_scroll);
-				const b = h(`button`, `<`);
-				b.type = `button`;
-				b.onclick = () => {
-					AppMain.doc.close_shape();
-				};
-				const header = this.querySelector(`header`);
-				header.insertBefore(b, header.firstChild);
 
-				const map = AppMain.doc.app_map.osm;
-				const stops1 = [...this.app_query_stops()].map(x => x.app_latlon);
-				const stops = [...this.app_query_stops()].map(x => [parseFloat(x.dataset.lat),
-				parseFloat(x.dataset.lon), x.dataset.id, x.querySelector(`app-name`).textContent,
-				x.querySelector(`app-transfer`)?.textContent??``].filter(Boolean));
+				const map = this.app_map.osm;
 
 				this.polyline?.forEach(x => x.removeFrom(map));
 				const shape = this.app_shape;
@@ -1804,7 +1887,7 @@ p,
 
 				this._export = h(`button`, `TXT`);
 				this._export.addEventListener(`click`, this.on_export);
-				this.querySelector(`header`).appendChild(this._export);
+				this.my_header.appendChild(this._export);
 					//map.setZoom(15);
 		
 
@@ -1815,7 +1898,7 @@ p,
 			}
 
 			current_shape_fr() {
-				const map = AppMain.doc.app_map.osm;
+				const map = this.app_map.osm;
 				const container = this.parentElement;
 				const view = container.getBoundingClientRect();
 
@@ -1844,7 +1927,7 @@ p,
 			}
 
 			app_fit() {
-				const map = AppMain.doc.app_map.osm;
+				const map = this.app_map.osm;
 				const bounds = this.polyline[0]?.getBounds();
 				if (bounds?.isValid()) {
 					map.fitBounds(bounds.pad(0.04), { maxZoom: 16 });
@@ -1856,7 +1939,7 @@ p,
 			}
 
 			disconnectedCallback() {
-				const map = AppMain.doc.app_map.osm;
+				const map = this.app_map.osm;
 				this.polyline?.forEach(x => x.removeFrom(map));
 				this.polyline = [];
 				this._scrollContainer.removeEventListener(`scroll`, this.on_scroll);
@@ -1899,7 +1982,7 @@ p,
 		window.customElements.define(`app-trip`, AppTrip);
 
 
-		class AppStop extends HTMLElement {
+		class AppStop extends AppBase {
 			constructor() {
 				super();
 
@@ -1910,9 +1993,8 @@ p,
 				this.on_preview = this.on_preview.bind(this);
 			}
 
-			get app_latlon() {
-				return [parseFloat(this.dataset.lat), parseFloat(this.dataset.lon)];
-			}
+
+
 
 			connectedCallback() {
 				this.goto_stop = h(`app-goto`, ``, {
@@ -1932,7 +2014,7 @@ p,
 			}
 
 			disconnectedCallback() {
-				const map = AppMain.doc.app_map.osm;
+				const map = this.app_map.osm;
 				this.marker?.removeFrom(map);
 				this.removeEventListener(`pointerdown`, this.on_click);
 				this.removeEventListener(`pointerover`, this.on_hover);
@@ -1942,7 +2024,7 @@ p,
 			redraw() {
 				const key = this.dataset.id;
 
-				const map = AppMain.doc.app_map.osm;
+				const map = this.app_map.osm;
 
 				this.marker?.removeFrom(map);
 
@@ -1987,7 +2069,7 @@ p,
 
 
 		on_click() {
-				const map = AppMain.doc.app_map.osm;
+				const map = this.app_map.osm;
 
 				const zoom = map.getZoom();
 				const minZoom = 12;
@@ -2031,7 +2113,8 @@ p,
 				const is_fav = AppFav.is_selected(`stop-${key}`);
 
 				const name = this.querySelector(`app-name`)?.textContent ?? `?`;
-				this.marker.bindTooltip(`${name}`, { className: is_fav ? `app-fav`: undefined });
+				const platform = this.querySelector(`app-platform`)?.textContent;
+				this.marker.bindTooltip(platform ? `[${platform}] ${name}` : name, { className: is_fav ? `app-fav`: undefined });
 				this.marker.openTooltip();
 			}
 
@@ -2045,7 +2128,7 @@ p,
 					return;
 				}
 
-				const map = AppMain.doc.app_map.osm;
+				const map = this.app_map.osm;
 
 				const res = [];
 
@@ -2061,7 +2144,7 @@ p,
 		window.customElements.define(`app-stop`, AppStop);
 
 
-		class AppSign extends HTMLElement {
+		class AppSign extends AppBase {
 			constructor() {
 				super();
 			}
@@ -2079,7 +2162,7 @@ p,
 			}
 
 			hide_marker() {
-				const map = AppMain.doc.app_map.osm;
+				const map = this.app_map.osm;
 				this.marker?.removeFrom(map);
 			}
 
@@ -2087,7 +2170,7 @@ p,
 				const key = this.dataset.id;
 				const name = this.textContent ?? `?`;
 
-				const map = AppMain.doc.app_map.osm;
+				const map = this.app_map.osm;
 
 				this.marker?.removeFrom(map);
 
