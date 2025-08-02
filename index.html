@@ -8,7 +8,12 @@
 
 	<title>Lijnverkenning</title>
 
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@100..900&display=swap" rel="stylesheet">
+
 	<link rel="shortcut icon" type="image/x-icon" href="docs/images/favicon.ico" />
+
 
 	<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
 		integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
@@ -21,7 +26,12 @@
 		body {
 			height: 100%;
 			margin: 0;
-			font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
+
+			font-family: "Lexend Deca", sans-serif;
+			font-optical-sizing: auto;
+			font-weight: 300;
+			font-style: normal;
+
 			overflow: hidden;
 		}
 
@@ -56,6 +66,7 @@
 			font-size: var(--app-map-font-size);
 			line-height: 1;
 			text-shadow: 1px 1px 2px #000000c0;
+			text-shadow: -1px -1px 0px #000000c0, 1px 1px 0px #000000c0, -1px 1px 0px #000000c0, 1px -1px 0px #000000c0;
 
 			&.focus {
 				text-shadow: 1px 1px 3px #000000c0, 1px 1px 8px #000000c0;
@@ -152,7 +163,6 @@
 				display: flex;
 				gap: 0.4rem;
 				align-items: center;
-
 
 				&>app-name {
 					flex: 1 1 auto;
@@ -302,6 +312,7 @@
 			flex-wrap: wrap;
 
 			&>header {
+				cursor: pointer;
 				flex: 1 1 100%;
 				display: flex;
 				gap: 0.5rem;
@@ -312,6 +323,7 @@
 
 					display: flex;
 					flex-direction: column;
+					font-size: 1.2rem;
 
 					&>app-sub-name {
 						font-size: 0.7rem;
@@ -358,7 +370,7 @@
 		}
 
 		app-fav {
-			font-weight: bold;
+			font-weight: 600;
 			display: flex;
 			align-items: center;
 			justify-content: center;
@@ -376,7 +388,7 @@
 
 
 		app-city {
-			font-weight: bold;
+			font-weight: 600;
 			padding: 0.6rem 0.2rem;
 			color: #40408080;
 			display: flex;
@@ -389,7 +401,7 @@
 
 
 		app-city-ref {
-			font-weight: bold;
+			font-weight: 600;
 			padding: 0.2rem;
 			color: #40408080;
 			display: flex;
@@ -423,7 +435,7 @@
 					border-radius: 0.25rem;
 					padding: 0.5rem;
 					text-transform: uppercase;
-					font-weight: bold;
+					font-weight: 500;
 				}
 			}
 
@@ -458,7 +470,7 @@
 					border-radius: 0.25rem;
 					padding: 0.5rem;
 					text-transform: uppercase;
-					font-weight: bold;
+					font-weight: 500;
 				}
 			}
 		}
@@ -506,11 +518,12 @@
 				background-color: transparent;
 				color: #08084060;
 				padding: 0.25rem;
+				font-size: 1.0rem;
 			}
 
 			&.focus {
 				button {
-					font-weight: bold;
+					font-weight: 500;
 					color: #080840;
 					text-decoration: underline;
 				}
@@ -565,7 +578,7 @@
 					border-radius: 0.25rem;
 					padding: 0.5rem;
 					text-transform: uppercase;
-					font-weight: bold;
+					font-weight: 500;
 					overflow: hidden;
 					min-width: 0;
 					text-overflow: ellipsis;
@@ -584,7 +597,7 @@
 			&.focus {
 				app-name {
 					color: #080840;
-					font-weight: bold;
+					font-weight: 500;
 					text-decoration: underline;
 				}
 			}
@@ -613,7 +626,7 @@
 
 
 		app-line {
-			font-weight: bold;
+			font-weight: 600;
 			display: flex;
 			align-items: center;
 			justify-content: center;
@@ -622,6 +635,7 @@
 			color: #e0e0f0;
 			background-color: var(--line-color);
 			border-radius: 0.2rem;
+			font-size: 1.4rem;
 		}
 
 		app-side {
@@ -647,13 +661,15 @@
 				flex-wrap: nowrap;
 			}
 
-			&>header {
-				font-weight: bold;
-			}
 
 			span {
 				color: #f0f0ff;
 			}
+
+			button {
+				font-size: 1.4rem;
+			}
+
 		}
 
 		app-map {
@@ -695,12 +711,14 @@
 			font-family: inherit;
 			display: flex;
 			border-radius: 0.2rem;
-			padding: 0.4rem 0.6rem;
+			padding: 0.2rem 0.4rem;
 			gap: 0.5rem;
 			border: 1px solid transparent;
 			background-color: #555588;
 			color: #f0f0ff;
 			cursor: pointer;
+			justify-content: center;
+			min-width: 2.4rem;
 
 			&.active {
 				background-color: #885555;
@@ -835,12 +853,19 @@
 
 		class AppBase extends HTMLElement {
 			static _cache = new Map();
+			static _count = 0;
+
+			constructor() {
+				super();
+
+				this._instance = ++AppBase._count;
+			}
 
 			get app_latlon() {
 				const lat = this.dataset.lat;
 				const lon = this.dataset.lon;
 
-				return this.memoize(`latlon`, lat + lon, (_) => {
+				return this.my_memoize(`latlon`, lat + lon, (_) => {
 					return lat && lon && [parseFloat(lat), parseFloat(lon)] || null;
 				});
 			}
@@ -862,7 +887,7 @@
 			}
 
 			get app_shape() {
-				return this.memoize(`shape`, this.dataset.shape, (shape) => {
+				return this.my_memoize(`shape`, this.dataset.shape, (shape) => {
 					return shape.split(`;`).map(x => {
 						const [lat, lon] = x.split(`,`);
 						return [parseFloat(lat), parseFloat(lon)];
@@ -994,6 +1019,7 @@
 					}
 				}
 
+				this.close_shape();
 			}
 
 
@@ -1030,7 +1056,7 @@
 				if (this.selected_shape !== shape || doc.dataset.src !== src) {
 					this.selected_shape = shape;
 					this.last_shape = shape;
-					doc.dataset.src = `static/trips/${shape}.html`;
+					doc.dataset.src = src;
 				}
 				this.redraw_step();
 				this.app_list.style.display = null;
@@ -1104,6 +1130,7 @@
 				this.classList.toggle(`compact`, compact);
 				this.querySelector(`#layout`).classList.toggle(`active`, compact);
 				this.querySelector(`#layout`).innerHTML = compact ? `&#x1F5DA;` : `&#x1F5DB;`
+				this.on_resize();
 			}
 
 
@@ -1112,6 +1139,7 @@
 
 				this.querySelector(`#layout`).classList.toggle(`active`, compact);
 				this.querySelector(`#layout`).innerHTML = compact ? `&#x1F5DA;` : `&#x1F5DB;`
+				this.on_resize();
 
 				this.stored_layout = compact ? `c` : ``;
 			}
@@ -1127,12 +1155,6 @@
 			}
 		}
 		window.customElements.define(`app-main`, AppMain);
-
-		class AppLine extends AppBase {
-			connectedCallback() {
-				this.style.setProperty(`--line-color`, this.dataset.color);
-			}
-		}
 
 		class AppGoto extends AppBase {
 			constructor() {
@@ -1579,10 +1601,6 @@
 				this.pending = 0;
 			}
 
-			connectedCallback() {
-				this.refresh();
-			}
-
 			disconnectedCallback() {
 				this.innerHTML = ``;
 			}
@@ -1716,9 +1734,15 @@ p,
 
 				for (const [lat, lon, key, name, transfer] of stops) {
 					const is_fav = AppFav.is_selected(`stop-${key}`);
+					const radius = is_fav ? POINT_SIZE_IMPORTANT : POINT_SIZE;
+					const color  = is_fav ? `#ff2020c0` : `#2020ff80`;
 					const marker_end = L.circleMarker([lat, lon], {
-						radius: is_fav ? POINT_SIZE_IMPORTANT : POINT_SIZE, color: is_fav ?
-							`#ff2020c0` : `#2020ff80`
+						radius,
+						weight: radius * 0.8, 
+						fillColor: `#ffffff`,
+						fill: true,
+						fillOpacity: 1.0,
+						color,
 					});
 					marker_end.addTo(map);
 					marker_end.bindTooltip(`${name} (${transfer})`);
@@ -1907,14 +1931,14 @@ p,
 				const shape = this.parentElement.app_shape;
 				const fr = L.GeometryUtil.locateOnLine(map, L.polyline(shape), L.latLng(this.app_latlon));
 
-				const fr1 = fr + 0.01;
-				const fr2 = fr - 0.01;
+				const fr1 = fr + 0.0001;
+				const fr2 = fr - 0.0001;
 				const fr11 = L.GeometryUtil.interpolateOnLine(map, shape, fr1).latLng;
 				const fr22 = L.GeometryUtil.interpolateOnLine(map, shape, fr2).latLng;
 
-				const color = text ? `#f02020` : `#202020`;
+				const color = text ? `#f02020` : `#cccccc`;
 
-				const angle = getAngle([fr11.lat, fr11.lng],[fr22.lat, fr22.lng], -1)
+				const angle = getAngle([fr22.lat, fr22.lng],[fr11.lat, fr11.lng], -1)
 		        const icon = L.divIcon({ 
 					className: 'arrow-icon', 
 					bgPos: [5, 5], 
@@ -2311,11 +2335,14 @@ p,
 					icon: stopIcon,
 				});
 				*/
+				const radius = is_fav ? POINT_SIZE_IMPORTANT : POINT_SIZE;
+				const color = is_fav ? `#f02020` : `#2020f0`;
 				this.marker = L.circleMarker(this.app_latlon, {
-					radius: is_fav ? POINT_SIZE_IMPORTANT : POINT_SIZE, 
-					color: is_fav ? `#f02020` : `#2020f0`,
+					radius,
+					weight: radius * 0.8,
+					color, 
 					fill: true,
-					fillColor: is_fav ? `#f02020` : `#2020f0`,
+					fillColor: `#ffffff`,
 					fillOpacity: 1.0,
 				});
 				this.marker.addTo(map);
@@ -2377,7 +2404,7 @@ p,
 				const key = this.dataset.id;
 				const is_fav = AppFav.is_selected(`stop-${key}`);
 
-				this.marker.setRadius(is_fav ? POINT_SIZE_IMPORTANT : POINT_SIZE_IMPORTANT);
+				this.marker?.setRadius(is_fav ? POINT_SIZE_IMPORTANT : POINT_SIZE_IMPORTANT);
 				this.classList.remove(`focus`);
 			}
 
@@ -2415,7 +2442,7 @@ p,
 
 				const res = [];
 
-				res.push([parseFloat(this.dataset.lat), parseFloat(this.dataset.lon)]);
+				res.push(this.app_latlon);
 
 				const bounds = L.latLngBounds(res);
 				if (bounds.isValid()) {
@@ -2430,10 +2457,6 @@ p,
 		class AppSign extends AppBase {
 			constructor() {
 				super();
-			}
-
-			get app_latlon() {
-				return [parseFloat(this.dataset.lat), parseFloat(this.dataset.lon)];
 			}
 
 			connectedCallback() {
