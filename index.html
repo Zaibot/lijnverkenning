@@ -190,6 +190,7 @@
 					}
 
 					&>app-stats,
+					&>app-trips,
 					&>app-duration {
 						align-self: start;
 					}
@@ -309,7 +310,7 @@
 			&::after {
 				content: "min";
 				line-height: 1;
-				font-size: 0.6rem;
+				font-size: 0.5rem;
 			}
 		}
 
@@ -330,7 +331,28 @@
 			&::after {
 				content: "stops";
 				line-height: 1;
-				font-size: 0.6rem;
+				font-size: 0.5rem;
+			}
+		}
+
+		app-trips {
+			color: #7f7fb0;
+			display: flex;
+			flex-direction: column;
+			justify-content: center;
+			align-items: center;
+			font-size: 0.8rem;
+
+			&::before {
+				content: "\27F3";
+				line-height: 1;
+				font-size: 1.2rem;
+			}
+
+			&::after {
+				content: "trips";
+				line-height: 1;
+				font-size: 0.5rem;
 			}
 		}
 
@@ -418,6 +440,7 @@
 					}
 
 					&>app-stats,
+					&>app-trips,
 					&>app-duration {
 						align-self: start;
 					}
