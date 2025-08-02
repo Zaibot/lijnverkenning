@@ -164,16 +164,34 @@
 				gap: 0.4rem;
 				align-items: center;
 
-				&>app-name {
+				&>app-bar {
 					flex: 1 1 auto;
 
-					display: flex;
-					flex-direction: column;
+					background-color: #e0e0f0;
+					background-color: #c0c0f0;
+					border-radius: 0.25rem;
+					padding: 0.5rem;
 
+					&>app-name {
+						flex: 1 1 auto;
+						flex: 1 1 min-content;
+						display: flex;
+						flex-direction: column;
+						font-size: 1.2rem;
 
-					&>app-sub-name {
-						font-size: 0.7rem;
-						color: #7f7fb0;
+						color: #202050;
+						text-transform: uppercase;
+						font-weight: 500;
+
+						&>app-sub-name {
+							font-size: 0.7rem;
+							color: #7f7fb0;
+						}
+					}
+
+					&>app-stats,
+					&>app-duration {
+						align-self: start;
 					}
 				}
 			}
@@ -274,6 +292,48 @@
 			gap: 0.5rem;
 		}
 
+		app-duration {
+			color: #7f7fb0;
+			display: flex;
+			flex-direction: column;
+			justify-content: center;
+			align-items: center;
+			font-size: 0.8rem;
+
+			&::before {
+				content: "\23F2";
+				line-height: 1;
+				font-size: 1.2rem;
+			}
+
+			&::after {
+				content: "min";
+				line-height: 1;
+				font-size: 0.6rem;
+			}
+		}
+
+		app-stats {
+			color: #7f7fb0;
+			display: flex;
+			flex-direction: column;
+			justify-content: center;
+			align-items: center;
+			font-size: 0.8rem;
+
+			&::before {
+				content: "\2B23";
+				line-height: 1;
+				font-size: 1.2rem;
+			}
+
+			&::after {
+				content: "stops";
+				line-height: 1;
+				font-size: 0.6rem;
+			}
+		}
+
 		app-plan {
 			app-list {
 				display: flex;
@@ -311,6 +371,15 @@
 			justify-items: center;
 			flex-wrap: wrap;
 
+
+			border: 1px solid #77777740;
+			border-radius: 0.5rem;
+			background-color: #f0f0ff;
+
+			&:focus {
+				background-color: #e0e0f0;
+			}
+
 			&>header {
 				cursor: pointer;
 				flex: 1 1 100%;
@@ -318,26 +387,45 @@
 				gap: 0.5rem;
 				align-items: center;
 
-				&>app-name {
+				padding: 0.5rem;
+				border-radius: 0.5rem;
+				color: #e0e0f0;
+				background-color: #202050;
+
+				&>app-bar {
 					flex: 1 1 auto;
 
-					display: flex;
-					flex-direction: column;
-					font-size: 1.2rem;
+					background-color: #e0e0f0;
+					background-color: #c0c0f0;
+					border-radius: 0.25rem;
+					padding: 0.5rem;
 
-					&>app-sub-name {
-						font-size: 0.7rem;
-						color: #7f7fb0;
+					&>app-name {
+						flex: 1 1 auto;
+						flex: 1 1 min-content;
+						display: flex;
+						flex-direction: column;
+						font-size: 1.2rem;
+
+						color: #202050;
+						text-transform: uppercase;
+						font-weight: 500;
+
+						&>app-sub-name {
+							font-size: 0.7rem;
+							color: #7f7fb0;
+						}
+					}
+
+					&>app-stats,
+					&>app-duration {
+						align-self: start;
 					}
 				}
 			}
 
 			&>app-keywords {
 				font-size: 0.7rem;
-			}
-
-			&>app-bar {
-				flex: 1 1 100%;
 			}
 
 			app-trip-cell {
@@ -363,10 +451,14 @@
 			app-stop-ref {
 				display: flex;
 				flex-direction: row;
+				font-size: 0.8rem;
 				gap: 0.5rem;
 				align-items: center;
 			}
 
+
+
+			&>header {}
 		}
 
 		app-fav {
@@ -412,37 +504,7 @@
 			app-doc & {}
 		}
 
-		app-trip-ref {
-			border: 1px solid #77777740;
-			border-radius: 0.5rem;
-			background-color: #f0f0ff;
-
-			&:focus {
-				background-color: #e0e0f0;
-			}
-
-			&>header {
-				padding: 0.5rem;
-				border-radius: 0.5rem;
-				color: #e0e0f0;
-				background-color: #202050;
-
-
-				&>app-name {
-					background-color: #e0e0f0;
-					background-color: #c0c0f0;
-					color: #202050;
-					border-radius: 0.25rem;
-					padding: 0.5rem;
-					text-transform: uppercase;
-					font-weight: 500;
-				}
-			}
-
-			app-stop-ref {
-				font-size: 0.8rem;
-			}
-		}
+		app-trip-ref {}
 
 
 		app-route {
