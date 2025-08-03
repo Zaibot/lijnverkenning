@@ -1714,7 +1714,7 @@
 					this.innerHTML = `Ophalen van informatie...`
 				}, 400);
 
-				try{
+				try {
 					this.classList.add(`loading`)
 
 					this.abort?.abort(`new request`);
@@ -1742,12 +1742,14 @@
 					}
 
 					const last = this.app_main.last_shape;
-					if (last) {
-						const match = this.querySelector(`app-trip-ref[data-shape=${JSON.stringify(last)}]`);
-						if (match) {
-							match.scrollIntoView({behavior: "smooth", block: "center", inline: "nearest"});
-							match.focus();
-						}
+					const match = last && this.querySelector(`app-trip-ref[data-shape=${JSON.stringify(last)}]`);
+					if (match) {
+						this.scrollTo(0, match.offsetTop * 0.8);
+
+						match.scrollIntoView({behavior: "smooth", block: "center", inline: "nearest"});
+						match.focus();
+					} else {
+						this.scrollTo(0, 0);
 					}
 
 					this.app_map.osm.invalidateSize();
