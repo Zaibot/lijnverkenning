@@ -230,6 +230,11 @@
 				padding: 0.2rem;
 			}
 
+			app-headsign>header {
+				padding: 0.4rem;
+			}
+
+
 			app-trip-ref>header {
 				padding: 0.2rem;
 			}
@@ -388,26 +393,26 @@
 			flex: 1 1 auto;
 		}
 
-		app-trip-ref {
-
-
+		app-headsign {
 			border: 1px solid #77777740;
 			border-radius: 0.5rem;
 			background-color: #f0f0ff;
+
+			&:not(:has(.app-search-visible)) {
+				display: none;
+			}
 
 			&:focus {
 				background-color: #e0e0f0;
 			}
 
 			&>header {
-				cursor: pointer;
 				display: flex;
 				gap: 0.5rem;
 				align-items: center;
 
 				padding: 0.5rem;
 				border-radius: 0.5rem;
-				color: #e0e0f0;
 				background-color: #202050;
 
 				&>app-bar {
@@ -415,6 +420,74 @@
 					background-color: #c0c0f0;
 					border-radius: 0.25rem;
 					padding: 0.5rem;
+					flex-wrap: nowrap;
+				}
+
+				app-name {
+					font-size: 1.2rem;
+					color: #202050;
+					text-transform: uppercase;
+					font-weight: 500;
+					word-break: break-word;
+				}
+			}
+
+			app-group {
+				display: flex;
+				gap: 0.1rem;
+				padding: 0.1rem;
+				flex-direction: column;
+			}
+		}
+
+
+		app-trip-ref {
+			border-radius: 0.5rem;
+			border: 2px solid transparent;
+
+			&:not(:last-child) {
+				border-bottom: 1px solid #77777740;
+			}
+
+
+			&>header {
+				border: 2px solid transparent;
+				cursor: pointer;
+				display: flex;
+				gap: 0.5rem;
+				align-items: center;
+
+				padding: 0.2rem;
+				border-radius: 0.5rem;
+				color: #e0e0f0;
+
+
+				&:focus {
+					background-color: #f0f0f0;
+					border-color: #505080;
+					outline: none;
+				}
+
+				&::after {
+					content: '\276D';
+					color: #202050;
+					color: #7777eb;
+					color: #313167;
+					color: #7f7fb0;
+
+					font-size: 1.5rem;
+				}
+
+				&::before {
+					content: '\25C9';
+					color: #202050;
+					color: #7777eb;
+					color: #313167;
+					font-size: 1.5rem;
+				}
+
+				&>app-bar {
+					flex: 1 1 auto;
 					flex-wrap: nowrap;
 
 					&>app-stats,
@@ -431,17 +504,20 @@
 				app-name {
 					font-size: 1.2rem;
 					color: #202050;
+					color: #7777eb;
 					text-transform: uppercase;
 					font-weight: 500;
 					word-break: break-word;
 				}
 
 				app-sub-name {
-					font-size: 0.7rem;
+					font-size: 1.0rem;
 					color: #7f7fb0;
-					text-transform: uppercase;
+					color: #202050;
+					color: #313167;
 					font-weight: 500;
 					word-break: break-word;
+					flex: 1 1 auto;
 				}
 			}
 
@@ -904,7 +980,7 @@
 					<button type="button" id="list">&#x25B3;</button>
 					<button type="button" id="locate">&#x25C9;</button>
 					<button type="button" id="layout">&#x1F5DB;&#x1F5DA;</button>
-					<app-search data-target="app-doc > app-trip-ref">
+					<app-search data-target="app-doc > app-headsign > app-group > app-trip-ref">
 						<input type="text" autocomplete="false" list="search-keywords" autofocus
 							placeholder="Lijnen zoeken..." />
 						<datalist id="search-keywords"></datalist>
@@ -1063,6 +1139,7 @@
 				this.next_shape = this.next_shape.bind(this)
 				this.prev_shape = this.prev_shape.bind(this)
 				this.close_shape = this.close_shape.bind(this)
+				this.goto_close_shape = this.goto_close_shape.bind(this)
 				this.on_resize = this.on_resize.bind(this)
 				this.today = this.today.bind(this)
 				this.date_prev = this.date_prev.bind(this)
@@ -1078,8 +1155,8 @@
 				window.addEventListener(`resize`, this.on_resize);
 				this.querySelector(`#prev`).addEventListener(`click`, this.prev_shape);
 				this.querySelector(`#next`).addEventListener(`click`, this.next_shape);
-				this.querySelector(`#list`).addEventListener(`click`, this.close_shape);
-				this.querySelector(`#date`).addEventListener(`change`, this.close_shape);
+				this.querySelector(`#list`).addEventListener(`click`, this.goto_close_shape);
+				this.querySelector(`#date`).addEventListener(`change`, this.goto_close_shape);
 				this.querySelector(`#date_prev`).addEventListener(`click`, this.date_prev);
 				this.querySelector(`#date_next`).addEventListener(`click`, this.date_next);
 				this.querySelector(`#layout`).addEventListener(`click`, this.toggle_layout);
@@ -1155,6 +1232,11 @@
 				window.history.pushState({ shape }, `Shape: ${shape}`, `#shape=${shape}`);
 			}
 
+			goto_close_shape() {
+				this.close_shape();
+				window.history.pushState({  }, `Home`, `#`);
+			}
+
 			close_shape() {
 				const doc = this.app_doc;
 				const date = this.app_date.valueAsDate ?? new Date();
@@ -1172,13 +1254,15 @@
 
 				const days = [`zo`,`ma`,`di`,`wo`,`do`,`vr`,`za`];
 				this.app_date_hint.textContent = `${days[date.getDay()]}`
+
+
 			}
 
 			today() {
 				const date = new Date();
 				this.app_date.valueAsDate = date;
 				this.last_shape = null;
-				this.close_shape();
+				this.app_main.goto_close_shape();
 			}
 
 			date_prev() {
@@ -1186,7 +1270,7 @@
 				date.setDate(date.getDate() - 1);
 				this.app_date.valueAsDate = date;
 				this.last_shape = null;
-				this.close_shape();
+				this.app_main.goto_close_shape();
 			}
 
 			date_next() {
@@ -1194,7 +1278,7 @@
 				date.setDate(date.getDate() + 1);
 				this.app_date.valueAsDate = date;
 				this.last_shape = null;
-				this.close_shape();
+				this.app_main.goto_close_shape();
 			}
 
 			next_shape() {
@@ -1616,7 +1700,7 @@
 			}
 
 			on_change(e) {
-				this.app_main.close_shape();
+				this.app_main.goto_close_shape();
 				this.stored_input = this.app_input.value;
 				this.app_main.last_shape = null;
 				this.apply_search();
@@ -1754,7 +1838,7 @@
 						this.scrollTo(0, match.offsetTop * 0.85);
 
 						match.scrollIntoView({behavior: "smooth", block: "center", inline: "nearest"});
-						match.focus();
+						match.querySelector(`header`)?.focus();
 					} else {
 						this.scrollTo(0, 0);
 					}
