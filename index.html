@@ -245,7 +245,7 @@
 			}
 
 			app-city {
-				padding: 0.0rem 0.2rem;
+				padding: 0.2rem 0.0rem;
 				font-size: 0.8rem;
 
 				color: #404080;
@@ -304,7 +304,7 @@
 			font-size: 0.8rem;
 
 			&::before {
-				content: "\23F2";
+				content: "\23F1";
 				line-height: 1;
 				font-size: 1.2rem;
 			}
@@ -433,6 +433,7 @@
 					color: #202050;
 					text-transform: uppercase;
 					font-weight: 500;
+					word-break: break-word;
 				}
 
 				app-sub-name {
@@ -440,6 +441,7 @@
 					color: #7f7fb0;
 					text-transform: uppercase;
 					font-weight: 500;
+					word-break: break-word;
 				}
 			}
 
@@ -1432,9 +1434,14 @@
 
 			on_moveend() {
 				const zoom = this.osm.getZoom();
-				const scale = Math.pow(zoom/14, 4);
+				const scale = Math.pow(zoom/14, 6);
+				const scale2 = Math.pow(zoom/14, 4);
 
 				this.style.setProperty(`--app-map-font-size`, `${scale}rem`);
+
+				for (const el of document.querySelectorAll(`app-stop`)) {
+					el.marker?.setRadius?.(8 * scale2);
+				}
 
 				if (!this.app_locate.classList.contains(`active`)) {
 					return;
@@ -1470,7 +1477,7 @@
 
 
 		const redraw_queue = new Set();
-		let redraw_queue_pending = null;
+		let redraw_queue_pending = 0;
 		function queue_redraw(el) {
 			redraw_queue.add(el);
 			if (redraw_queue_pending) {
@@ -1712,7 +1719,7 @@
 					}
 
 					this.innerHTML = `Ophalen van informatie...`
-				}, 400);
+				}, 800);
 
 				try {
 					this.classList.add(`loading`)
@@ -1744,7 +1751,7 @@
 					const last = this.app_main.last_shape;
 					const match = last && this.querySelector(`app-trip-ref[data-shape=${JSON.stringify(last)}]`);
 					if (match) {
-						this.scrollTo(0, match.offsetTop * 0.8);
+						this.scrollTo(0, match.offsetTop * 0.85);
 
 						match.scrollIntoView({behavior: "smooth", block: "center", inline: "nearest"});
 						match.focus();
@@ -1934,6 +1941,10 @@ p,
 				return `stop-travel-${this.app_start}-${this.app_end}`;
 			}
 
+			get app_shape_angle() {
+				return Number(this.dataset.shapeAngle);
+			}
+
 			constructor() {
 				super();
 
@@ -2043,18 +2054,10 @@ p,
 
 				this.marker?.removeFrom(map);
 
-
 				const shape = this.parentElement.app_shape;
-				const fr = L.GeometryUtil.locateOnLine(map, L.polyline(shape), L.latLng(this.app_latlon));
-
-				const fr1 = fr + 0.0001;
-				const fr2 = fr - 0.0001;
-				const fr11 = L.GeometryUtil.interpolateOnLine(map, shape, fr1).latLng;
-				const fr22 = L.GeometryUtil.interpolateOnLine(map, shape, fr2).latLng;
-
+				const angle = this.app_shape_angle;
 				const color = text ? `#f02020` : `#cccccc`;
 
-				const angle = getAngle([fr22.lat, fr22.lng],[fr11.lat, fr11.lng], -1)
 		        const icon = L.divIcon({ 
 					className: 'arrow-icon', 
 					bgPos: [5, 5], 
@@ -2408,24 +2411,22 @@ p,
 				this.on_preview = this.on_preview.bind(this);
 			}
 
-
-
-
 			connectedCallback() {
-				this.goto_stop = h(`app-goto`, ``, {
-					target: `app-doc`,
-					src: `static/stops/${this.dataset.id}.html`,
-				});
+				//this.goto_stop = h(`app-goto`, ``, {
+				//	target: `app-doc`,
+				//	src: `static/stops/${this.dataset.id}.html`,
+				//});
 
-				this.preview = h(`app-preview`);
-				this.preview.addEventListener(`preview`, this.on_preview);
+				//this.preview = h(`app-preview`);
+				//this.preview.addEventListener(`preview`, this.on_preview);
 
 				//this.appendChild(this.goto_stop);
 
-					queue_redraw(this);
 				this.addEventListener(`pointerdown`, this.on_click);
 				this.addEventListener(`pointerover`, this.on_hover);
 				this.addEventListener(`pointerout`, this.on_out);
+
+				this.queue_redraw();
 			}
 
 			disconnectedCallback() {
@@ -2740,12 +2741,6 @@ p,
 			document.querySelector(`app-doc`).dataset.src = `static/grid/${x}-${y}.html`
 		}
 
-		function getAngle([lat1, lon1], [lat2, lon2], coef) {
-			var dy = lat2 - lat1;
-			var dx = Math.cos(Math.PI / 180 * lat1) * (lon2 - lon1);
-			var ang = (Math.atan2(dy, dx) / Math.PI) * 180 * coef;
-			return ang;
-		}
 	</script>
 </body>
 
