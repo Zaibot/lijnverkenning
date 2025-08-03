@@ -166,28 +166,10 @@
 
 				&>app-bar {
 					flex: 1 1 auto;
-
-					background-color: #e0e0f0;
 					background-color: #c0c0f0;
 					border-radius: 0.25rem;
 					padding: 0.5rem;
-
-					&>app-name {
-						flex: 1 1 auto;
-						flex: 1 1 min-content;
-						display: flex;
-						flex-direction: column;
-						font-size: 1.2rem;
-
-						color: #202050;
-						text-transform: uppercase;
-						font-weight: 500;
-
-						&>app-sub-name {
-							font-size: 0.7rem;
-							color: #7f7fb0;
-						}
-					}
+					flex-wrap: nowrap;
 
 					&>app-stats,
 					&>app-trips,
@@ -195,12 +177,32 @@
 						align-self: start;
 					}
 				}
+
+				app-list {
+					flex: 1 1 auto;
+				}
+
+				app-name {
+					font-size: 1.2rem;
+					color: #202050;
+					text-transform: uppercase;
+					font-weight: 500;
+					word-break: break-word;
+				}
+
+				app-sub-name {
+					font-size: 0.7rem;
+					color: #7f7fb0;
+					text-transform: uppercase;
+					font-weight: 500;
+					word-break: break-word;
+				}
 			}
 
 			app-city {
 				padding-left: 0rem;
 				position: sticky;
-				top: 3rem;
+				top: 3.0rem;
 				background-color: #f0f0ff;
 				z-index: 0;
 			}
@@ -387,11 +389,6 @@
 		}
 
 		app-trip-ref {
-			display: flex;
-			flex-direction: row;
-			align-items: center;
-			justify-items: center;
-			flex-wrap: wrap;
 
 
 			border: 1px solid #77777740;
@@ -404,7 +401,6 @@
 
 			&>header {
 				cursor: pointer;
-				flex: 1 1 100%;
 				display: flex;
 				gap: 0.5rem;
 				align-items: center;
@@ -416,28 +412,10 @@
 
 				&>app-bar {
 					flex: 1 1 auto;
-
-					background-color: #e0e0f0;
 					background-color: #c0c0f0;
 					border-radius: 0.25rem;
 					padding: 0.5rem;
-
-					&>app-name {
-						flex: 1 1 auto;
-						flex: 1 1 min-content;
-						display: flex;
-						flex-direction: column;
-						font-size: 1.2rem;
-
-						color: #202050;
-						text-transform: uppercase;
-						font-weight: 500;
-
-						&>app-sub-name {
-							font-size: 0.7rem;
-							color: #7f7fb0;
-						}
-					}
+					flex-wrap: nowrap;
 
 					&>app-stats,
 					&>app-trips,
@@ -445,7 +423,26 @@
 						align-self: start;
 					}
 				}
+
+				app-list {
+					flex: 1 1 auto;
+				}
+
+				app-name {
+					font-size: 1.2rem;
+					color: #202050;
+					text-transform: uppercase;
+					font-weight: 500;
+				}
+
+				app-sub-name {
+					font-size: 0.7rem;
+					color: #7f7fb0;
+					text-transform: uppercase;
+					font-weight: 500;
+				}
 			}
+
 
 			&>app-keywords {
 				font-size: 0.7rem;
@@ -510,8 +507,6 @@
 			flex-direction: row;
 			gap: 0.5rem;
 			align-items: center;
-
-			app-doc & {}
 		}
 
 
@@ -524,10 +519,8 @@
 			gap: 0.5rem;
 			align-items: center;
 
-			app-doc & {}
 		}
 
-		app-trip-ref {}
 
 
 		app-route {
@@ -656,6 +649,7 @@
 				position: sticky;
 				top: -1.0rem;
 				backdrop-filter: blur(3px);
+				z-index: 1;
 
 				&>app-name {
 					background-color: #c0c0f0;
@@ -790,6 +784,12 @@
 			flex-direction: column;
 			gap: 0.5rem;
 			padding: 0.5rem;
+
+			transition: filter 0.3s ease;
+
+			&.loading {
+				filter: grayscale(1.0) opacity(0.75);
+			}
 		}
 
 		button {
@@ -1702,40 +1702,67 @@
 				const src = this.dataset.src;
 				if (!src) {
 					this.innerHTML = `-`;
+					this.classList.remove(`loading`)
 					return;
 				}
 
-				this.innerHTML = `Ophalen van informatie...`
+				const timer = setTimeout(() => {
+					if (this.pending !== current) {
+						return;
+					}
 
-				const response = await fetch(src, {});
+					this.innerHTML = `Ophalen van informatie...`
+				}, 400);
 
-				if (this.pending !== current) {
-					return;
-				}
+				try{
+					this.classList.add(`loading`)
 
-				if (!response.ok) {
-					this.innerHTML = `Foutje`;
-					return;
-				}
+					this.abort?.abort(`new request`);
+					this.abort = new AbortController();
 
-				const text = await response.text();
+					const response = await fetch(src, { signal: this.abort.signal });
 
-				this.innerHTML = text;
+					clearTimeout(timer);
 
-				for (const s of document.querySelectorAll(`app-search`)) {
-					s.apply_search?.();
-				}
+					if (this.pending !== current) {
+						return;
+					}
 
-				const last = this.app_main.last_shape;
-				if (last) {
-					const match = this.querySelector(`app-trip-ref[data-shape=${JSON.stringify(last)}]`);
-					if (match) {
-						match.scrollIntoView({behavior: "smooth", block: "center", inline: "nearest"});
-						match.focus();
+					if (!response.ok) {
+						this.innerHTML = `Foutje`;
+						return;
+					}
+
+					const text = await response.text();
+
+					this.innerHTML = text;
+
+					for (const s of document.querySelectorAll(`app-search`)) {
+						s.apply_search?.();
+					}
+
+					const last = this.app_main.last_shape;
+					if (last) {
+						const match = this.querySelector(`app-trip-ref[data-shape=${JSON.stringify(last)}]`);
+						if (match) {
+							match.scrollIntoView({behavior: "smooth", block: "center", inline: "nearest"});
+							match.focus();
+						}
+					}
+
+					this.app_map.osm.invalidateSize();
+				} catch(ex) { 
+					if (ex === `new request` || ex?.name === `AbortError`) {
+						return;
+					}
+					console.error(`whoops`, ex);
+				} finally {
+					clearTimeout(timer);
+
+					if (this.pending === current) {
+						this.classList.remove(`loading`);
 					}
 				}
-
-				this.app_map.osm.invalidateSize();
 			}
 		}
 		window.customElements.define(`app-doc`, AppDoc);
@@ -1774,9 +1801,11 @@
 			}
 
 			disconnectedCallback() {
-				const map = this.app_map.osm;
-				this.polyline?.forEach(x => x.removeFrom(map));
-				this.polyline = [];
+				const map = this.app_map?.osm;
+				if (map) {
+					this.polyline?.forEach(x => x.removeFrom(map));
+					this.polyline = [];
+				}
 
 				this.my_header?.removeEventListener(`click`, this.on_click);
 				this.preview?.removeEventListener(`preview`, this.on_preview);
